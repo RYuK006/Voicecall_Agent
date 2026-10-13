@@ -16,4 +16,7 @@
 - **Conversational Intelligence (LLM)**: Free-tier Groq (Llama 3 / Mistral) or Google Gemini Flash API with structured function calling
 - **TTS (Text-to-Speech)**: Microsoft Edge-TTS (Free, ultra-natural neural voices for Hindi, Malayalam, Indian English)
 - **Audio Transport**: Low-latency WebSocket streaming with PCM/WAV/MP3 audio chunks
+- **Management & UI**: Interactive Web Dashboard with visual audio waves, live conversation transcripts, event editor, and CSV / Google Sheets two-way sync
+- **RSVP Tracking**: Automatic structured extraction (Attendance status: Attending / Declined / Tentative, Guest Count, Dietary preferences, Notes)
+
 
