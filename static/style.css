@@ -496,6 +496,17 @@ select:focus, input[type="text"]:focus, textarea:focus {
   box-shadow: 0 6px 22px rgba(16, 185, 129, 0.45);
 }
 
+.btn-sim-call {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  box-shadow: 0 4px 18px rgba(59, 130, 246, 0.3);
+}
+
+.btn-sim-call:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(59, 130, 246, 0.45);
+}
+
 .btn-mic {
   background: rgba(30, 41, 59, 0.8);
   border: 1px solid var(--panel-border);

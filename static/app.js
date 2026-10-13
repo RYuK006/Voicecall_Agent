@@ -3,6 +3,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   // DOM Elements - Call Controls
   const btnStartCall = document.getElementById("btn-start-call");
+  const btnSimCall = document.getElementById("btn-sim-call");
   const btnToggleMic = document.getElementById("btn-toggle-mic");
   const btnEndCall = document.getElementById("btn-end-call");
   const micLabel = document.getElementById("mic-label");
@@ -201,11 +202,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Voice Call Pipeline ---
   btnStartCall.addEventListener("click", startCall);
+  btnSimCall.addEventListener("click", startSimCall);
   btnEndCall.addEventListener("click", endCall);
   btnToggleMic.addEventListener("click", toggleMic);
   btnClearTranscript.addEventListener("click", () => {
     transcriptStream.innerHTML = "";
   });
+
+  async function startSimCall() {
+    const selectedOpt = guestSelect.options[guestSelect.selectedIndex];
+    const guestText = selectedOpt ? selectedOpt.textContent : "";
+    let phone = "";
+    
+    // Extract phone from option text or prompt
+    const match = guestText.match(/\+?\d[\d\s-]{7,}/);
+    if (match) {
+      phone = match[0];
+    } else {
+      phone = prompt("Enter phone number to dial via SIM card (e.g. +91 98765 43210):");
+    }
+
+    if (!phone) return;
+
+    appendTranscript("system", `Triggering cellular call via phone's physical SIM to ${phone}...`);
+    try {
+      const res = await fetch("/api/dial-sim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      appendTranscript("system", `SIM Dialer: ${data.message}`);
+      
+      // Also start local voice audio session so AI listens and speaks
+      startCall();
+    } catch (err) {
+      appendTranscript("system", `SIM Call error: ${err.message}`);
+    }
+  }
 
   // Manual fallback input
   btnSendManual.addEventListener("click", sendManualText);
