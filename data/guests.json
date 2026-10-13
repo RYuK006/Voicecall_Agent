@@ -1,0 +1,46 @@
+[
+  {
+    "id": "GST-101",
+    "name": "Rahul Sharma",
+    "phone": "+91 98765 43210",
+    "preferred_language": "Hindi",
+    "status": "Pending",
+    "attendees_count": 0,
+    "dietary_preference": "None",
+    "notes": "Spoke previously about presenting paper",
+    "last_call_at": null
+  },
+  {
+    "id": "GST-102",
+    "name": "Ananya Nair",
+    "phone": "+91 98123 45678",
+    "preferred_language": "Malayalam",
+    "status": "Pending",
+    "attendees_count": 0,
+    "dietary_preference": "None",
+    "notes": "Invited as panelist",
+    "last_call_at": null
+  },
+  {
+    "id": "GST-103",
+    "name": "Vikram Mehta",
+    "phone": "+91 99887 76655",
+    "preferred_language": "English",
+    "status": "Pending",
+    "attendees_count": 0,
+    "dietary_preference": "None",
+    "notes": "Angel investor sponsor",
+    "last_call_at": null
+  },
+  {
+    "id": "GST-104",
+    "name": "Pooja Patel",
+    "phone": "+91 97654 32109",
+    "preferred_language": "Hindi",
+    "status": "Confirmed",
+    "attendees_count": 2,
+    "dietary_preference": "Vegetarian",
+    "notes": "Confirmed on 12 Oct",
+    "last_call_at": "2026-10-12T14:30:00Z"
+  }
+]
