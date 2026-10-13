@@ -1,0 +1,33 @@
+{
+  "event_name": "AI India Summit 2026",
+  "organizer": "Sarvam AI & IndicTech Community",
+  "date": "Saturday, November 14, 2026",
+  "time": "10:00 AM - 5:00 PM IST",
+  "venue": "Grand Ballroom, Tech Hub Convention Centre, Bengaluru",
+  "virtual_link": "https://summit.ai-india.org/live",
+  "description": "Annual flagship conference celebrating advancements in Indic AI, Sovereign Foundation Models, and Autonomous Voice Agents.",
+  "agenda": [
+    {
+      "time": "10:00 AM",
+      "session": "Keynote: The Dawn of Indic Voice Agents & Sovereign AI"
+    },
+    {
+      "time": "12:00 PM",
+      "session": "Technical Deep Dive: Sub-second Latency Telephony Architectures"
+    },
+    {
+      "time": "02:00 PM",
+      "session": "Live Demos & Networking Lunch"
+    },
+    {
+      "time": "03:30 PM",
+      "session": "Panel: Real-world Deployments in Regional Governance & Enterprise"
+    }
+  ],
+  "faq": {
+    "parking": "Complimentary valet parking available on-site.",
+    "dress_code": "Smart Casual.",
+    "food": "Full buffet lunch with vegetarian, vegan, and non-vegetarian selections provided.",
+    "plus_ones": "Up to 2 additional guests are allowed per registration, please confirm headcounts."
+  }
+}
