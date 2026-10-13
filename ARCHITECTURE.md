@@ -22,5 +22,6 @@
 - **Audio Transport**: Low-latency WebSocket streaming with PCM/WAV/MP3 audio chunks
 - **Management & UI**: Interactive Web Dashboard with visual audio waves, live conversation transcripts, event editor, and CSV / Google Sheets two-way sync
 - **RSVP Tracking**: Automatic structured extraction (Attendance status: Attending / Declined / Tentative, Guest Count, Dietary preferences, Notes)
+- **Default Event Template**: **Tech Conference & AI Summit 2026** (Includes agenda, keynote speakers, venue/virtual links, attendance confirmations, guest count, and catering/dietary restrictions).
 
 
