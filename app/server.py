@@ -11,6 +11,7 @@ from app.config import STATIC_DIR, RSVP_CSV_PATH, DEFAULT_LANG, DEFAULT_GENDER
 from app.rsvp_manager import RSVPManager
 from app.tts import TTSEngine
 from app.agent import ConversationalAgent
+from app.gsm_dialer import GSMDialer
 
 app = FastAPI(title="Indic Voice Call Agent", version="1.0.0")
 
@@ -53,6 +54,19 @@ async def export_csv():
     if not RSVP_CSV_PATH.exists():
         RSVPManager._export_to_csv_unlocked(RSVPManager.get_guests())
     return FileResponse(RSVP_CSV_PATH, filename="rsvps.csv", media_type="text/csv")
+
+class DialRequest(BaseModel):
+    phone: str
+
+@app.post("/api/dial-sim")
+async def dial_sim_number(req: DialRequest):
+    result = GSMDialer.dial(req.phone)
+    return result
+
+@app.post("/api/end-sim")
+async def end_sim_call():
+    result = GSMDialer.end_call()
+    return result
 
 class TTSRequest(BaseModel):
     text: str
