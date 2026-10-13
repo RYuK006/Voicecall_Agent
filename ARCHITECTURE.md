@@ -13,7 +13,7 @@
 ## Technology Stack Decision
 - **Backend Runtime**: Python (FastAPI + WebSockets for bi-directional audio streaming)
 - **STT (Speech-to-Text)**: Faster-Whisper (local free) / Groq Whisper (free tier API)
-- **Conversational Intelligence (LLM)**: Free-tier Groq (Llama 3 / Mistral) or Google Gemini Flash API with structured function calling
+- **Conversational Intelligence (LLM)**: Hybrid Engine: Supports Google Gemini 2.5 Flash / Groq free tier when keys are provided, and includes a built-in intelligent zero-config Indic/English conversational fallback engine that runs 100% locally with zero setup or API keys required.
 - **TTS (Text-to-Speech)**: Microsoft Edge-TTS (Free, ultra-natural neural voices for Hindi, Malayalam, Indian English)
 - **Audio Transport**: Low-latency WebSocket streaming with PCM/WAV/MP3 audio chunks
 - **Management & UI**: Interactive Web Dashboard with visual audio waves, live conversation transcripts, event editor, and CSV / Google Sheets two-way sync
