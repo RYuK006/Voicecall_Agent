@@ -7,5 +7,13 @@
   2. Voice input captured in real-time.
   3. Real-time Speech-to-Text (STT) transcribe Indic/English speech.
   4. Conversational Agent (LLM) prompts the guest about event attendance, guest count, dietary preferences, or questions.
-  5. Natural Text-to-Speech (TTS) synthesizes conversational voice responses in Hindi / English / regional languages.
+  5. Natural Text-to-Speech (TTS) synthesizes conversational voice responses in Hindi / Malayalam / English.
   6. RSVP status and responses automatically update a mock CRM / Google Sheet / Local Database.
+
+## Technology Stack Decision
+- **Backend Runtime**: Python (FastAPI + WebSockets for bi-directional audio streaming)
+- **STT (Speech-to-Text)**: Faster-Whisper (local free) / Groq Whisper (free tier API)
+- **Conversational Intelligence (LLM)**: Free-tier Groq (Llama 3 / Mistral) or Google Gemini Flash API with structured function calling
+- **TTS (Text-to-Speech)**: Microsoft Edge-TTS (Free, ultra-natural neural voices for Hindi, Malayalam, Indian English)
+- **Audio Transport**: Low-latency WebSocket streaming with PCM/WAV/MP3 audio chunks
+
