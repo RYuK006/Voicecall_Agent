@@ -4,11 +4,11 @@
     "name": "Rahul Sharma",
     "phone": "+91 98765 43210",
     "preferred_language": "Hindi",
-    "status": "Pending",
-    "attendees_count": 0,
-    "dietary_preference": "None",
+    "status": "Confirmed",
+    "attendees_count": 1,
+    "dietary_preference": "Vegetarian",
     "notes": "Spoke previously about presenting paper",
-    "last_call_at": null
+    "last_call_at": "2026-10-13T15:12:23.604198+00:00"
   },
   {
     "id": "GST-102",
