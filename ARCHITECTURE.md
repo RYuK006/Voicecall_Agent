@@ -14,7 +14,11 @@
 - **Backend Runtime**: Python (FastAPI + WebSockets for bi-directional audio streaming)
 - **STT (Speech-to-Text)**: Hybrid STT: Zero-latency browser Web Speech API for real-time transcription supporting Hindi (`hi-IN`), Malayalam (`ml-IN`), and Indian English (`en-IN`), with server-side Whisper audio chunk fallback.
 - **Conversational Intelligence (LLM)**: Hybrid Engine: Supports Google Gemini 2.5 Flash / Groq free tier when keys are provided, and includes a built-in intelligent zero-config Indic/English conversational fallback engine that runs 100% locally with zero setup or API keys required.
-- **TTS (Text-to-Speech)**: Microsoft Edge-TTS (Free, ultra-natural neural voices for Hindi, Malayalam, Indian English)
+- **TTS (Text-to-Speech)**: Microsoft Edge-TTS with multi-language code-mixing support:
+  - Hindi: `hi-IN-SwaraNeural` (Female), `hi-IN-MadhurNeural` (Male)
+  - Malayalam: `ml-IN-SobhanaNeural` (Female), `ml-IN-MidhunNeural` (Male)
+  - Indian English: `en-IN-NeerjaNeural` (Female), `en-IN-PrabhatNeural` (Male)
+- **Voice Persona & Code-Mixing**: Dynamic language selector with seamless code-mixing (Hinglish / Manglish) and customizable speaking rate/pitch.
 - **Audio Transport**: Low-latency WebSocket streaming with PCM/WAV/MP3 audio chunks
 - **Management & UI**: Interactive Web Dashboard with visual audio waves, live conversation transcripts, event editor, and CSV / Google Sheets two-way sync
 - **RSVP Tracking**: Automatic structured extraction (Attendance status: Attending / Declined / Tentative, Guest Count, Dietary preferences, Notes)
