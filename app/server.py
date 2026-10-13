@@ -36,6 +36,44 @@ async def save_event(config: Dict[str, Any]):
         raise HTTPException(status_code=500, detail="Failed to save event configuration")
     return {"status": "ok", "config": config}
 
+@app.get("/api/keys")
+async def get_keys_status():
+    import app.config as cfg
+    return {
+        "has_grok": bool(cfg.XAI_GROK_API_KEY),
+        "has_groq": bool(cfg.GROQ_API_KEY),
+        "has_gemini": bool(cfg.GEMINI_API_KEY),
+        "active_engine": "xAI Grok" if cfg.XAI_GROK_API_KEY else ("Groq Llama 3" if cfg.GROQ_API_KEY else ("Gemini Flash" if cfg.GEMINI_API_KEY else "Local Fallback Rules"))
+    }
+
+class KeysUpdateRequest(BaseModel):
+    grok_key: Optional[str] = ""
+    gemini_key: Optional[str] = ""
+
+@app.post("/api/keys")
+async def update_keys(req: KeysUpdateRequest):
+    import app.config as cfg
+    env_lines = []
+    
+    if req.grok_key:
+        k = req.grok_key.strip()
+        if k.startswith("xai-"):
+            cfg.XAI_GROK_API_KEY = k
+            env_lines.append(f"XAI_GROK_API_KEY={k}\nGROK_API_KEY={k}\n")
+        else:
+            cfg.GROQ_API_KEY = k
+            env_lines.append(f"GROQ_API_KEY={k}\nGROK_API_KEY={k}\n")
+    if req.gemini_key:
+        k = req.gemini_key.strip()
+        cfg.GEMINI_API_KEY = k
+        env_lines.append(f"GEMINI_API_KEY={k}\n")
+
+    env_path = cfg.BASE_DIR / ".env"
+    with open(env_path, "a", encoding="utf-8") as f:
+        f.writelines(env_lines)
+
+    return await get_keys_status()
+
 @app.get("/api/guests")
 async def get_guests():
     return RSVPManager.get_guests()

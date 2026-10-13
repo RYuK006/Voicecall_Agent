@@ -62,6 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadEventConfig();
   loadGuests();
   loadStats();
+  loadKeysStatus();
 
   // --- Tab Navigation ---
   tabBtns.forEach(btn => {
@@ -141,6 +142,46 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       console.error("Error loading event:", e);
     }
+  }
+
+  // --- AI Brain & API Keys Management ---
+  const keysForm = document.getElementById("keys-form");
+  const currentEngineName = document.getElementById("current-engine-name");
+
+  async function loadKeysStatus() {
+    try {
+      const res = await fetch("/api/keys");
+      const d = await res.json();
+      if (currentEngineName) {
+        currentEngineName.textContent = d.active_engine;
+        if (d.has_grok || d.has_groq) {
+          currentEngineName.style.color = "var(--accent-green)";
+        }
+      }
+    } catch(e) {
+      console.error("Error loading keys status:", e);
+    }
+  }
+
+  if (keysForm) {
+    keysForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const grok_key = document.getElementById("input-grok-key").value.trim();
+      const gemini_key = document.getElementById("input-gemini-key").value.trim();
+
+      try {
+        const res = await fetch("/api/keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ grok_key, gemini_key })
+        });
+        const d = await res.json();
+        alert(`API Key updated successfully! Active Engine: ${d.active_engine}`);
+        if (currentEngineName) currentEngineName.textContent = d.active_engine;
+      } catch (err) {
+        alert("Failed to save key: " + err.message);
+      }
+    });
   }
 
   async function loadStats() {

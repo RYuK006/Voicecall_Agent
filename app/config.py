@@ -66,7 +66,8 @@ DEFAULT_LANG = "hi"
 DEFAULT_GENDER = "female"
 
 # Cloud AI API Keys (Optional - System works 100% offline/locally if not provided)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "") or os.getenv("GROK_API_KEY", "")
+XAI_GROK_API_KEY = os.getenv("XAI_GROK_API_KEY", "") or os.getenv("XAI_API_KEY", "") or (os.getenv("GROK_API_KEY", "") if os.getenv("GROK_API_KEY", "").startswith("xai-") else "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 

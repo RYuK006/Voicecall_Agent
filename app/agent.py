@@ -2,7 +2,7 @@ import re
 import json
 import httpx
 from typing import Dict, Any, List, Optional, Tuple
-from app.config import GROQ_API_KEY, GEMINI_API_KEY
+from app.config import GROQ_API_KEY, XAI_GROK_API_KEY, GEMINI_API_KEY
 from app.rsvp_manager import RSVPManager
 
 class ConversationalAgent:
@@ -55,7 +55,9 @@ class ConversationalAgent:
 
         # Try Cloud LLM if keys are available
         response_text = None
-        if GROQ_API_KEY:
+        if XAI_GROK_API_KEY:
+            response_text = await self._call_xai_grok(user_text)
+        elif GROQ_API_KEY:
             response_text = await self._call_groq(user_text)
         elif GEMINI_API_KEY:
             response_text = await self._call_gemini(user_text)
@@ -236,6 +238,35 @@ class ConversationalAgent:
             update["dietary_preference"] = "Vegan"
 
         return update if update else None
+
+    async def _call_xai_grok(self, user_text: str) -> Optional[str]:
+        """Optional xAI Grok (grok-2 / grok-beta) real-time inference."""
+        try:
+            url = "https://api.x.ai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {XAI_GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            system_prompt = (
+                f"You are Priya, a friendly, concise AI calling agent representing {self.event.get('event_name')}. "
+                f"You are speaking in {self.lang} with natural, polite code-mixing. Keep your spoken responses concise (1-2 short sentences max). "
+                f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}."
+            )
+            messages = [{"role": "system", "content": system_prompt}] + self.history
+            payload = {
+                "model": "grok-beta",
+                "messages": messages,
+                "temperature": 0.5,
+                "max_tokens": 120
+            }
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.post(url, json=payload, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    return data["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            print(f"xAI Grok API call error: {e}")
+        return None
 
     async def _call_groq(self, user_text: str) -> Optional[str]:
         """Optional Cloud Groq Llama-3 sub-second inference."""
