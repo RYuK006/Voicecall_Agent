@@ -301,14 +301,29 @@ class GSMDialer:
             except Exception:
                 pass
 
+        has_vb_cable = False
+        if sys.platform == "win32":
+            try:
+                cmd_vb = [
+                    "powershell", "-NoProfile", "-Command",
+                    "(Get-PnpDevice | Where-Object { $_.FriendlyName -like '*VB-Audio*' -and $_.Present }).FriendlyName"
+                ]
+                res_vb = subprocess.run(cmd_vb, capture_output=True, text=True, timeout=3)
+                if "VB-Audio" in res_vb.stdout:
+                    has_vb_cable = True
+            except Exception:
+                pass
+
         phone_name = phones[0] if phones else "None"
-        is_ready = bool(has_gateway or phone_name != "None")
+        is_ready = bool(has_gateway or phone_name != "None" or has_vb_cable)
+        badge_text = "VB-CABLE Ready" if has_vb_cable else f"{phone_name} Ready"
         return {
             "has_handsfree_gateway": has_gateway,
+            "has_vb_cable": has_vb_cable,
             "connected_phone": phone_name,
             "all_phones": phones,
             "status": "connected" if is_ready else "not_connected",
-            "message": f"{phone_name} (Hands-Free Ready)" if is_ready else "No Bluetooth Phone Connected"
+            "message": badge_text
         }
 
 
