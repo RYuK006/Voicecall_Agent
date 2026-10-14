@@ -76,6 +76,50 @@
           </div>
         </div>
 
+        <!-- Method A: Bluetooth Hands-Free Direct Audio Routing Panel -->
+        <div class="audio-routing-card">
+          <div class="routing-card-header">
+            <div class="routing-title">
+              <span class="routing-badge-icon">📶</span>
+              <span class="routing-heading">Method A: Bluetooth Hands-Free Direct Audio</span>
+            </div>
+            <span class="bt-pill" id="bt-pill-status">Checking Phone...</span>
+          </div>
+
+          <div class="routing-grid">
+            <div class="routing-field">
+              <label for="select-audio-input">
+                <span>🎤 Audio Input (Caller's Voice):</span>
+              </label>
+              <select id="select-audio-input">
+                <option value="default">Default System Microphone</option>
+              </select>
+            </div>
+
+            <div class="routing-field">
+              <label for="select-audio-output">
+                <span>🔊 Audio Output (AI Voice to Phone):</span>
+              </label>
+              <select id="select-audio-output">
+                <option value="default">Default System Speaker</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="routing-footer">
+            <div class="vu-wrapper">
+              <span class="vu-tag">Caller Stream VU:</span>
+              <div class="vu-track">
+                <div class="vu-fill" id="vu-meter-fill"></div>
+              </div>
+            </div>
+            <div class="routing-actions">
+              <button type="button" class="btn-subtle" id="btn-refresh-audio-devices" title="Rescan audio devices">Rescan</button>
+              <button type="button" class="btn-subtle" id="btn-test-audio-output" title="Play test phrase through selected output">Test Voice</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Center Waveform & Avatar Animation -->
         <div class="call-visualizer">
           <div class="avatar-ring" id="avatar-ring">
