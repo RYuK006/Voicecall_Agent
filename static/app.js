@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnTestAudioOutput = document.getElementById("btn-test-audio-output");
   const inputBridgeUrl = document.getElementById("input-bridge-url");
   const btnSaveBridgeUrl = document.getElementById("btn-save-bridge-url");
+  const btnLaunchPhoneLink = document.getElementById("btn-launch-phone-link");
 
   // DOM Elements - Dashboard
   const statTotal = document.getElementById("stat-total");
@@ -369,6 +370,24 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => {
           btnSaveBridgeUrl.disabled = false;
           btnSaveBridgeUrl.textContent = "Connect";
+        }, 3000);
+      }
+    });
+  }
+
+  if (btnLaunchPhoneLink) {
+    btnLaunchPhoneLink.addEventListener("click", async () => {
+      btnLaunchPhoneLink.disabled = true;
+      btnLaunchPhoneLink.textContent = "Opening...";
+      try {
+        await fetch("/api/launch-phone-link", { method: "POST" });
+        appendTranscript("system", "🔗 Opening Microsoft Phone Link on Windows...");
+      } catch (e) {
+        appendTranscript("system", "Error opening Phone Link: " + e.message);
+      } finally {
+        setTimeout(() => {
+          btnLaunchPhoneLink.disabled = false;
+          btnLaunchPhoneLink.textContent = "Open Phone Link";
         }, 3000);
       }
     });
