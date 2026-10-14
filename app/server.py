@@ -108,8 +108,8 @@ async def end_sim_call():
 
 @app.get("/api/sim-call-status")
 async def get_sim_call_status():
-    state = GSMDialer.get_call_state()
-    return {"state": state}
+    info = GSMDialer.get_detailed_call_state()
+    return info
 
 class TTSRequest(BaseModel):
     text: str
