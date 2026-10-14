@@ -31,10 +31,26 @@ def get_local_ip():
     return ip
 
 def get_telephony_state():
-    """Check dumpsys telecom or telephony.registry for call state."""
+    """Check termux-telephony-deviceinfo, dumpsys telecom, or telephony.registry for call state."""
+    # 1. Termux API telephony device info (reliable and accessible on modern non-root Android)
+    if shutil.which("termux-telephony-deviceinfo"):
+        try:
+            res = subprocess.run(["termux-telephony-deviceinfo"], capture_output=True, text=True, timeout=2)
+            if res.returncode == 0 and res.stdout.strip():
+                data = json.loads(res.stdout)
+                call_state = str(data.get("call_state", "")).upper()
+                if call_state == "OFFHOOK":
+                    return {"state": "active", "answered": True, "source": "termux-deviceinfo"}
+                elif call_state == "RINGING":
+                    return {"state": "ringing", "answered": False, "source": "termux-deviceinfo"}
+                elif call_state == "IDLE":
+                    return {"state": "idle", "answered": False, "source": "termux-deviceinfo"}
+        except Exception:
+            pass
+
     try:
-        # 1. dumpsys telecom (gold standard for active vs dialing)
-        res = subprocess.run(["dumpsys", "telecom"], capture_output=True, text=True, timeout=3)
+        # 2. dumpsys telecom (fallback)
+        res = subprocess.run(["dumpsys", "telecom"], capture_output=True, text=True, timeout=2)
         out = res.stdout
         if re.search(r"mCalls:\s*.*\[TC@\d+,\s*ACTIVE\b", out, re.DOTALL) or re.search(r"Foreground call:\s*\[TC@\d+,\s*ACTIVE\b", out):
             return {"state": "active", "answered": True}
@@ -50,8 +66,8 @@ def get_telephony_state():
         pass
 
     try:
-        # 2. dumpsys telephony.registry
-        res = subprocess.run(["dumpsys", "telephony.registry"], capture_output=True, text=True, timeout=3)
+        # 3. dumpsys telephony.registry (fallback)
+        res = subprocess.run(["dumpsys", "telephony.registry"], capture_output=True, text=True, timeout=2)
         out = res.stdout
         fg_match = re.search(r"mForegroundCallState\s*[=:]\s*(\d+)", out)
         if fg_match:
@@ -115,25 +131,27 @@ class BridgeHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json({"status": "error", "message": "Invalid phone number"}, 400)
                 return
 
-            # Dial via termux-telephony-call or am start
-            success = False
+            print(f"[Bridge] Triggering SIM call to {clean_number}...")
+            dialed = False
             err_msg = ""
+
+            # Launch asynchronously using Popen so the HTTP request returns instantly without 5s timeout
             if shutil.which("termux-telephony-call"):
-                res = subprocess.run(["termux-telephony-call", clean_number], capture_output=True, text=True, timeout=5)
-                if res.returncode == 0:
-                    success = True
-                else:
-                    err_msg = res.stderr
+                try:
+                    subprocess.Popen(["termux-telephony-call", clean_number])
+                    dialed = True
+                except Exception as e:
+                    err_msg = str(e)
 
-            if not success:
-                res = subprocess.run(["am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{clean_number}"], capture_output=True, text=True, timeout=5)
-                if res.returncode == 0:
-                    success = True
-                else:
-                    err_msg = res.stderr or err_msg
+            if not dialed:
+                try:
+                    subprocess.Popen(["am", "start", "-a", "android.intent.action.CALL", "-d", f"tel:{clean_number}"])
+                    dialed = True
+                except Exception as e:
+                    err_msg = err_msg or str(e)
 
-            if success:
-                print(f"[Bridge] Dialing {clean_number}...")
+            if dialed:
+                print(f"[Bridge] Dialing {clean_number} triggered successfully.")
                 self._send_json({"status": "ok", "message": f"Dialing {clean_number} via Termux SIM"})
             else:
                 self._send_json({"status": "error", "message": err_msg or "Failed to trigger call"}, 500)
