@@ -156,3 +156,49 @@ class GSMDialer:
             pass
         return {"state": "unknown", "answered": False, "source": "none"}
 
+    @classmethod
+    def get_bluetooth_status(cls) -> Dict[str, Any]:
+        """Detect connected Bluetooth Hands-Free phones on Windows or Termux."""
+        has_gateway = False
+        phones = []
+
+        if sys.platform == "win32":
+            try:
+                cmd = [
+                    "powershell", "-NoProfile", "-Command",
+                    "(Get-PnpDevice -Class Bluetooth | Where-Object Present).FriendlyName"
+                ]
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=4)
+                if res.returncode == 0:
+                    lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+                    has_gateway = any("headset" in l.lower() for l in lines)
+                    phones = list(set([
+                        l for l in lines 
+                        if not any(k in l.lower() for k in [
+                            "bluetooth", "adapter", "enumerator", "generic", 
+                            "transport", "protocol", "nap", "pse", "gateway", 
+                            "service", "attribute"
+                        ])
+                    ]))
+            except Exception:
+                pass
+
+        elif cls.is_termux():
+            try:
+                res = subprocess.run(["dumpsys", "bluetooth_manager"], capture_output=True, text=True, timeout=3)
+                if "state: ON" in res.stdout:
+                    has_gateway = True
+            except Exception:
+                pass
+
+        phone_name = phones[0] if phones else "None"
+        is_ready = bool(has_gateway or phone_name != "None")
+        return {
+            "has_handsfree_gateway": has_gateway,
+            "connected_phone": phone_name,
+            "all_phones": phones,
+            "status": "connected" if is_ready else "not_connected",
+            "message": f"{phone_name} (Hands-Free Ready)" if is_ready else "No Bluetooth Phone Connected"
+        }
+
+
