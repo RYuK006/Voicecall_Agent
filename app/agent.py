@@ -282,17 +282,21 @@ class ConversationalAgent:
                 f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}."
             )
             messages = [{"role": "system", "content": system_prompt}] + self.history
-            payload = {
-                "model": "llama-3.1-8b-instant",
-                "messages": messages,
-                "temperature": 0.5,
-                "max_tokens": 120
-            }
-            async with httpx.AsyncClient(timeout=4.0) as client:
-                res = await client.post(url, json=payload, headers=headers)
-                if res.status_code == 200:
-                    data = res.json()
-                    return data["choices"][0]["message"]["content"].strip()
+            candidate_models = ["qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+            for model_name in candidate_models:
+                payload = {
+                    "model": model_name,
+                    "messages": messages,
+                    "temperature": 0.5,
+                    "max_tokens": 120
+                }
+                async with httpx.AsyncClient(timeout=4.0) as client:
+                    res = await client.post(url, json=payload, headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        content = data["choices"][0]["message"]["content"].strip()
+                        if content:
+                            return content
         except Exception as e:
             print(f"Groq API call fallback: {e}")
         return None
