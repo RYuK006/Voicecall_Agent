@@ -144,6 +144,15 @@ async def launch_phone_link():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/open-sound-settings")
+async def open_sound_settings():
+    """Launch Windows Sound Settings to configure default communication devices."""
+    try:
+        subprocess.Popen(["powershell", "-NoProfile", "-Command", "Start-Process 'ms-settings:sound'"])
+        return {"status": "ok", "message": "Windows Sound Settings opened"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 class TTSRequest(BaseModel):
     text: str
     lang: Optional[str] = DEFAULT_LANG
