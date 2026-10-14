@@ -252,6 +252,135 @@ select:focus, input[type="text"]:focus, textarea:focus {
   gap: 14px;
 }
 
+/* Method A: Bluetooth Audio Routing Card */
+.audio-routing-card {
+  background: rgba(14, 20, 34, 0.7);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.routing-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.routing-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.routing-badge-icon {
+  font-size: 1rem;
+}
+
+.routing-heading {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bt-pill {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-family: var(--font-mono);
+}
+
+.bt-pill.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.routing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.routing-field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.routing-field select {
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  background: rgba(10, 14, 23, 0.9);
+}
+
+.routing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vu-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.vu-tag {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.vu-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vu-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981 0%, #00f2fe 70%, #ef4444 100%);
+  border-radius: 4px;
+  transition: width 0.08s ease-out;
+}
+
+.routing-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-subtle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-subtle:hover {
+  background: rgba(0, 242, 254, 0.1);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
 /* Call Visualizer */
 .call-visualizer {
   height: 180px;
