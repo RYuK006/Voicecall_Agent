@@ -146,10 +146,10 @@ async def launch_phone_link():
 
 @app.post("/api/open-sound-settings")
 async def open_sound_settings():
-    """Launch Windows Sound Settings to configure default communication devices."""
+    """Launch Windows Sound Control Panel (mmsys.cpl) to configure default communication devices."""
     try:
-        subprocess.Popen(["powershell", "-NoProfile", "-Command", "Start-Process 'ms-settings:sound'"])
-        return {"status": "ok", "message": "Windows Sound Settings opened"}
+        subprocess.Popen(["powershell", "-NoProfile", "-Command", "Start-Process 'control' -ArgumentList 'mmsys.cpl'; Start-Process 'ms-settings:sound'"])
+        return {"status": "ok", "message": "Windows Sound Control Panel opened"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
