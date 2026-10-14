@@ -28,6 +28,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const vuMeterFill = document.getElementById("vu-meter-fill");
   const btnRefreshAudioDevices = document.getElementById("btn-refresh-audio-devices");
   const btnTestAudioOutput = document.getElementById("btn-test-audio-output");
+  const inputBridgeUrl = document.getElementById("input-bridge-url");
+  const btnSaveBridgeUrl = document.getElementById("btn-save-bridge-url");
 
   // DOM Elements - Dashboard
   const statTotal = document.getElementById("stat-total");
@@ -162,6 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStats();
   loadKeysStatus();
   checkBluetoothPhoneStatus();
+  loadBridgeConfig();
   refreshAudioDevices();
   setInterval(checkBluetoothPhoneStatus, 12000);
 
@@ -330,6 +333,46 @@ document.addEventListener("DOMContentLoaded", () => {
       btnTestAudioOutput.textContent = "Test Voice";
     }
   });
+
+  async function loadBridgeConfig() {
+    try {
+      const res = await fetch("/api/bridge-config");
+      const data = await res.json();
+      if (data.bridge_url && inputBridgeUrl) {
+        inputBridgeUrl.value = data.bridge_url;
+      }
+    } catch (e) {}
+  }
+
+  if (btnSaveBridgeUrl && inputBridgeUrl) {
+    btnSaveBridgeUrl.addEventListener("click", async () => {
+      const val = inputBridgeUrl.value.trim();
+      btnSaveBridgeUrl.disabled = true;
+      btnSaveBridgeUrl.textContent = "Connecting...";
+      try {
+        const res = await fetch("/api/bridge-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: val })
+        });
+        const data = await res.json();
+        if (data.status === "connected") {
+          btnSaveBridgeUrl.textContent = "✓ Connected";
+          appendTranscript("system", `📱 Connected to Termux Phone Bridge at ${data.bridge_url}`);
+        } else {
+          btnSaveBridgeUrl.textContent = "⚠️ Unreachable";
+          appendTranscript("system", `⚠️ Could not reach Termux at ${val}. Ensure 'python termux_bridge.py' is running on your phone!`);
+        }
+      } catch (err) {
+        btnSaveBridgeUrl.textContent = "Error";
+      } finally {
+        setTimeout(() => {
+          btnSaveBridgeUrl.disabled = false;
+          btnSaveBridgeUrl.textContent = "Connect";
+        }, 3000);
+      }
+    });
+  }
 
   // --- Tab Navigation ---
   tabBtns.forEach(btn => {
