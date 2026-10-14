@@ -59,8 +59,48 @@ class GSMDialer:
         """End the ongoing cellular phone call."""
         if cls.is_adb_available():
             try:
-                subprocess.run(["adb", "shell", "input", "keyevent", "KEYCODE_ENDCALL"], timeout=5)
+                subprocess.run(["adb", "shell", "input", "keyevent", "6"], timeout=5)
                 return {"status": "ok", "message": "Call ended via ADB"}
             except Exception as e:
                 return {"status": "error", "message": str(e)}
+        elif cls.is_termux():
+            try:
+                subprocess.run(["input", "keyevent", "6"], timeout=5)
+                return {"status": "ok", "message": "Call ended via Termux"}
+            except Exception as e:
+                return {"status": "error", "message": str(e)}
         return {"status": "ok", "message": "Call ended"}
+
+    @classmethod
+    def get_call_state(cls) -> str:
+        """Return 'idle', 'ringing', or 'offhook' (active call) from Android telephony status."""
+        try:
+            cmd = []
+            if cls.is_adb_available():
+                cmd = ["adb", "shell", "dumpsys", "telephony.registry"]
+            elif cls.is_termux():
+                cmd = ["dumpsys", "telephony.registry"]
+            
+            if cmd:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+                out = res.stdout
+                match = re.search(r"mCallState\s*[=:]\s*(\d+)", out)
+                if match:
+                    val = match.group(1)
+                    if val == "2":
+                        return "offhook"
+                    elif val == "1":
+                        return "ringing"
+                    elif val == "0":
+                        return "idle"
+                # Fallback substring checks
+                if "mCallState=2" in out or "mCallState: 2" in out:
+                    return "offhook"
+                elif "mCallState=1" in out or "mCallState: 1" in out:
+                    return "ringing"
+                elif "mCallState=0" in out or "mCallState: 0" in out:
+                    return "idle"
+        except Exception:
+            pass
+        return "unknown"
+
