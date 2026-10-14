@@ -363,6 +363,31 @@ select:focus, input[type="text"]:focus, textarea:focus {
   font-size: 0.75rem;
 }
 
+.phone-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(0, 102, 204, 0.12);
+  border: 1px solid rgba(0, 150, 255, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+}
+
+.phone-link-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.phone-link-label strong {
+  color: #60a5fa;
+}
+
+.phone-link-row .btn-subtle {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}
+
 .routing-footer {
   display: flex;
   align-items: center;
