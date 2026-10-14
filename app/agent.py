@@ -49,8 +49,8 @@ class ConversationalAgent:
                 f"Will you be able to attend?"
             )
 
-    async def generate_response(self, user_text: str) -> Tuple[str, Optional[Dict[str, Any]]]:
-        """Process user utterance and return (agent_response_text, rsvp_update_dict)."""
+    async def generate_response(self, user_text: str) -> Tuple[str, Optional[Dict[str, Any]], bool]:
+        """Process user utterance and return (agent_response_text, rsvp_update_dict, is_closing_boolean)."""
         self.history.append({"role": "user", "content": user_text})
 
         # Try Cloud LLM if keys are available
@@ -81,7 +81,36 @@ class ConversationalAgent:
             if updated:
                 self.guest = updated
 
-        return response_text, rsvp_update
+        is_closing = self.is_closing_turn(user_text, response_text)
+        return response_text, rsvp_update, is_closing
+
+    def is_closing_turn(self, user_text: str, agent_text: str) -> bool:
+        """Automatically detect if this interaction marks the natural end of the call."""
+        u = user_text.lower()
+        a = agent_text.lower()
+
+        user_closing = [
+            "bye", "goodbye", "alvida", "rakho", "phone rakho", "cut", "kat do", "hang up", "end call",
+            "shukriya", "dhanyavaad", "nandi", "thank you", "thanks", "ok bye", "chal bye", "theek hai bye",
+            "chalo bye", "shubharathri", "good night", "poyi varatte", "ta ta", "disconnect", "call cut",
+            "rakhta hoon", "rakh raha hoon", "rakh doon", "rakho ji", "phone rakh", "no that's all", "that's it",
+            "bas itna hi", "athre ullu", "see you"
+        ]
+        if any(w in u for w in user_closing):
+            return True
+
+        agent_closing = [
+            "shubh ho", "dhanyavaad", "have a wonderful day", "have a great day",
+            "milne ke liye utsuk", "kaanaam", "look forward to seeing you",
+            "goodbye", "take care", "miss karenge", "online jud sakein",
+            "all details have been recorded", "sabhi details register", "ellam details record",
+            "see you there", "alvida", "bye!", "have a nice day", "call disconnect", "registered successfully",
+            "swagat hai"
+        ]
+        if any(w in a for w in agent_closing):
+            return True
+
+        return False
 
     def _local_conversational_engine(self, text: str) -> str:
         """Intelligent, zero-latency local fallback engine for Hindi, Malayalam, and English."""
@@ -201,6 +230,16 @@ class ConversationalAgent:
             else:
                 return "All details have been recorded successfully. We look forward to seeing you at the AI India Summit on November 14th. Have a great day!"
 
+        # Goodbye / Thank you handling
+        goodbye_words = ["bye", "goodbye", "alvida", "rakhta hu", "rakh do", "cut", "shukriya", "dhanyavaad", "nandi", "thank you", "thanks", "ok bye"]
+        if any(w in t for w in goodbye_words):
+            if self.lang == "hi":
+                return "Shukriya! AI India Summit mein aapka swagat hai. Alvida, aapka din shubh ho!"
+            elif self.lang == "ml":
+                return "Nandi! Event-il kaanaam. Have a wonderful day ahead!"
+            else:
+                return "Thank you so much! We look forward to seeing you at the summit. Have a great day!"
+
         # Default polite clarification
         if self.lang == "hi":
             return "Ji, kya aap is event mein shamil ho rahe hain? Aap attendance ya agenda ke baare mein kuch bhi pooch sakte hain."
@@ -250,7 +289,8 @@ class ConversationalAgent:
             system_prompt = (
                 f"You are Priya, a friendly, concise AI calling agent representing {self.event.get('event_name')}. "
                 f"You are speaking in {self.lang} with natural, polite code-mixing. Keep your spoken responses concise (1-2 short sentences max). "
-                f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}."
+                f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}. "
+                f"IMPORTANT: Once the guest confirms or declines attendance and provides headcount/dietary details, OR if they say goodbye/thank you, wrap up the call politely with a warm farewell (e.g. 'Thank you, we look forward to seeing you at the summit! Have a wonderful day, goodbye!' or 'Shukriya, alvida!'). This allows the system to automatically conclude the call."
             )
             messages = [{"role": "system", "content": system_prompt}] + self.history
             payload = {
@@ -279,7 +319,8 @@ class ConversationalAgent:
             system_prompt = (
                 f"You are Priya, a friendly AI calling agent representing {self.event.get('event_name')}. "
                 f"You are speaking in {self.lang} with natural code-mixing. Keep your spoken responses concise (1-2 short sentences max). "
-                f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}."
+                f"Event Details: {json.dumps(self.event)}. Current Guest: {self.guest.get('name')}. "
+                f"IMPORTANT: Once the guest confirms or declines attendance and provides headcount/dietary details, OR if they say goodbye/thank you, wrap up the call politely with a warm farewell (e.g. 'Thank you, we look forward to seeing you at the summit! Have a wonderful day, goodbye!' or 'Shukriya, alvida!'). This allows the system to automatically conclude the call."
             )
             messages = [{"role": "system", "content": system_prompt}] + self.history
             candidate_models = ["qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
@@ -308,6 +349,7 @@ class ConversationalAgent:
             prompt = (
                 f"You are Priya, a friendly AI voice calling agent for {self.event.get('event_name')}. "
                 f"Respond in {self.lang} conversationally and concisely (1-2 spoken sentences). "
+                f"If the guest confirms or declines and gives headcount, conclude warmly with a goodbye/thank you. "
                 f"User said: {user_text}"
             )
             payload = {"contents": [{"parts": [{"text": prompt}]}]}
