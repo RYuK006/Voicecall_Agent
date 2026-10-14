@@ -47,10 +47,10 @@
     "name": "Aaron",
     "phone": "+91 8075985482",
     "preferred_language": "Malayalam",
-    "status": "Declined",
+    "status": "Confirmed",
     "attendees_count": 1,
-    "dietary_preference": "Non-Vegetarian",
+    "dietary_preference": "Vegetarian",
     "id": "GST-105",
-    "last_call_at": "2026-10-13T15:20:28.720805+00:00"
+    "last_call_at": "2026-10-14T01:41:04.642111+00:00"
   }
 ]
