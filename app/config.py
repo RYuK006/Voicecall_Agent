@@ -71,6 +71,11 @@ XAI_GROK_API_KEY = os.getenv("XAI_GROK_API_KEY", "") or os.getenv("XAI_API_KEY",
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# Digital Telephony Carrier Configuration (Optional for 100% microphone-free cloud calling)
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_VERIFIED_CALLER_ID = os.getenv("TWILIO_VERIFIED_CALLER_ID", "")
+
 # Server configuration
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
