@@ -5,13 +5,12 @@ echo "=========================================================="
 echo "🚀 Termux Voicecall Agent Automatic Setup"
 echo "=========================================================="
 
-echo "📦 Step 1: Installing pre-compiled Android wheel for pydantic-core..."
-pip install pydantic-core --extra-index-url https://eutalix.github.io/android-pydantic-core/ || \
-pip install pydantic-core --extra-index-url https://termux-user-repository.github.io/pypi/ || \
-(pkg install rust -y && pip install pydantic-core)
+echo "📦 Step 1: Ensuring Android-compatible pydantic-core wheel..."
+pip install pydantic-core --extra-index-url https://termux-user-repository.github.io/pypi/ || true
 
 echo "📦 Step 2: Installing remaining Python packages..."
 pip install -r requirements.txt
+
 
 echo "=========================================================="
 echo "✅ All packages installed successfully!"
