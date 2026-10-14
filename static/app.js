@@ -21,6 +21,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const manualTextInput = document.getElementById("manual-text-input");
   const btnSendManual = document.getElementById("btn-send-manual");
 
+  // DOM Elements - Method A Bluetooth Direct Audio Routing
+  const selectAudioInput = document.getElementById("select-audio-input");
+  const selectAudioOutput = document.getElementById("select-audio-output");
+  const btPillStatus = document.getElementById("bt-pill-status");
+  const vuMeterFill = document.getElementById("vu-meter-fill");
+  const btnRefreshAudioDevices = document.getElementById("btn-refresh-audio-devices");
+  const btnTestAudioOutput = document.getElementById("btn-test-audio-output");
+
   // DOM Elements - Dashboard
   const statTotal = document.getElementById("stat-total");
   const statConfirmed = document.getElementById("stat-confirmed");
@@ -50,6 +58,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let silenceTimer = null;
   let simMonitorInterval = null;
   let isWaitingSimAnswer = false;
+
+  // Audio Device State (Method A Bluetooth Routing)
+  let selectedInputDeviceId = "default";
+  let selectedOutputDeviceId = "default";
+  let audioContext = null;
+  let micMediaStream = null;
+  let vuAnimationId = null;
 
   function resetSilenceTimer() {
     clearTimeout(silenceTimer);
@@ -146,6 +161,175 @@ document.addEventListener("DOMContentLoaded", () => {
   loadGuests();
   loadStats();
   loadKeysStatus();
+  checkBluetoothPhoneStatus();
+  refreshAudioDevices();
+  setInterval(checkBluetoothPhoneStatus, 12000);
+
+  // --- Method A: Audio Device Routing & VU Meter ---
+  async function checkBluetoothPhoneStatus() {
+    try {
+      const res = await fetch("/api/bluetooth-status");
+      const data = await res.json();
+      if (data.status === "connected") {
+        btPillStatus.textContent = `🟢 ${data.connected_phone} Ready`;
+        btPillStatus.className = "bt-pill";
+      } else {
+        btPillStatus.textContent = "⚠️ Connect Phone via Bluetooth";
+        btPillStatus.className = "bt-pill warning";
+      }
+    } catch (e) {
+      btPillStatus.textContent = "Bluetooth Ready";
+    }
+  }
+
+  async function refreshAudioDevices() {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          tempStream.getTracks().forEach(t => t.stop());
+        } catch (e) {}
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      selectAudioInput.innerHTML = "";
+      selectAudioOutput.innerHTML = "";
+
+      let foundBtInput = false;
+      let foundBtOutput = false;
+
+      devices.forEach(device => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        const label = device.label || `${device.kind} (${device.deviceId.slice(0, 5)}...)`;
+        option.textContent = label;
+
+        const isBt = /bluetooth|hands-free|hfp|sco|headset|iqoo|phone/i.test(label);
+
+        if (device.kind === "audioinput") {
+          selectAudioInput.appendChild(option);
+          if (isBt && !foundBtInput) {
+            selectAudioInput.value = device.deviceId;
+            selectedInputDeviceId = device.deviceId;
+            foundBtInput = true;
+          }
+        } else if (device.kind === "audiooutput") {
+          selectAudioOutput.appendChild(option);
+          if (isBt && !foundBtOutput) {
+            selectAudioOutput.value = device.deviceId;
+            selectedOutputDeviceId = device.deviceId;
+            foundBtOutput = true;
+          }
+        }
+      });
+
+      if (!selectAudioInput.children.length) {
+        selectAudioInput.innerHTML = `<option value="default">Default Input Microphone</option>`;
+      }
+      if (!selectAudioOutput.children.length) {
+        selectAudioOutput.innerHTML = `<option value="default">Default Output Speaker</option>`;
+      }
+
+      initVUMeter(selectedInputDeviceId);
+    } catch (err) {
+      console.warn("Could not enumerate audio devices:", err);
+    }
+  }
+
+  function initVUMeter(deviceId) {
+    if (vuAnimationId) cancelAnimationFrame(vuAnimationId);
+    if (micMediaStream) {
+      micMediaStream.getTracks().forEach(t => t.stop());
+      micMediaStream = null;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+    const constraints = {
+      audio: deviceId && deviceId !== "default" ? { deviceId: { exact: deviceId } } : true
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+      micMediaStream = stream;
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function updateMeter() {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / bufferLength;
+        const percent = Math.min(100, Math.round((avg / 128) * 100));
+        vuMeterFill.style.width = percent + "%";
+        vuAnimationId = requestAnimationFrame(updateMeter);
+      }
+      updateMeter();
+    }).catch(err => {
+      console.warn("VU meter stream unavailable:", err);
+    });
+  }
+
+  selectAudioInput.addEventListener("change", () => {
+    selectedInputDeviceId = selectAudioInput.value;
+    initVUMeter(selectedInputDeviceId);
+    appendTranscript("system", `Audio Input switched to: ${selectAudioInput.options[selectAudioInput.selectedIndex].text}`);
+  });
+
+  selectAudioOutput.addEventListener("change", () => {
+    selectedOutputDeviceId = selectAudioOutput.value;
+    appendTranscript("system", `Audio Output switched to: ${selectAudioOutput.options[selectAudioOutput.selectedIndex].text}`);
+  });
+
+  btnRefreshAudioDevices.addEventListener("click", () => {
+    refreshAudioDevices();
+    checkBluetoothPhoneStatus();
+    appendTranscript("system", "Rescanning audio devices & Bluetooth phone connection...");
+  });
+
+  btnTestAudioOutput.addEventListener("click", async () => {
+    btnTestAudioOutput.disabled = true;
+    btnTestAudioOutput.textContent = "Testing...";
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: "Priya AI: Bluetooth Hands-Free digital audio output is verified and working perfectly.",
+          lang: langSelect.value || "en",
+          gender: genderSelect.value || "female"
+        })
+      });
+      const data = await res.json();
+      if (data.audio_base64) {
+        const testAudio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+        if (selectedOutputDeviceId && selectedOutputDeviceId !== "default" && typeof testAudio.setSinkId === "function") {
+          try { await testAudio.setSinkId(selectedOutputDeviceId); } catch(e){}
+        }
+        await testAudio.play();
+        appendTranscript("system", "🔊 Test voice phrase played through selected output device.");
+      }
+    } catch(e) {
+      appendTranscript("system", "Test voice error: " + e.message);
+    } finally {
+      btnTestAudioOutput.disabled = false;
+      btnTestAudioOutput.textContent = "Test Voice";
+    }
+  });
 
   // --- Tab Navigation ---
   tabBtns.forEach(btn => {
@@ -583,6 +767,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const audioUrl = "data:audio/mp3;base64," + b64;
     currentAudio = new Audio(audioUrl);
+
+    // Method A: Route audio output directly into Bluetooth Hands-Free / phone line
+    if (selectedOutputDeviceId && selectedOutputDeviceId !== "default" && typeof currentAudio.setSinkId === "function") {
+      try {
+        await currentAudio.setSinkId(selectedOutputDeviceId);
+      } catch (err) {
+        console.warn("Could not set audio sinkId on currentAudio:", err);
+      }
+    }
 
     currentAudio.onplay = () => {
       waveContainer.classList.add("speaking");
