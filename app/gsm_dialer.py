@@ -1,6 +1,7 @@
 import subprocess
 import shutil
 import sys
+import re
 from typing import Dict, Any
 
 class GSMDialer:
@@ -73,34 +74,85 @@ class GSMDialer:
 
     @classmethod
     def get_call_state(cls) -> str:
-        """Return 'idle', 'ringing', or 'offhook' (active call) from Android telephony status."""
+        """Return 'active', 'dialing', 'ringing', 'idle', or 'unknown'."""
+        info = cls.get_detailed_call_state()
+        return info.get("state", "unknown")
+
+    @classmethod
+    def get_detailed_call_state(cls) -> Dict[str, Any]:
+        """
+        Query Android telecom subsystem to accurately distinguish:
+        - 'idle': No active or outgoing call
+        - 'dialing': Outbound call initiated, waiting for remote phone to answer
+        - 'ringing': Remote phone is ringing / alerting
+        - 'active': Remote party has ANSWERED the call (connected and speaking)
+        - 'disconnected': Call just disconnected
+        """
         try:
+            # 1. Try dumpsys telecom (gold standard for ACTIVE vs DIALING)
             cmd = []
             if cls.is_adb_available():
-                cmd = ["adb", "shell", "dumpsys", "telephony.registry"]
+                cmd = ["adb", "shell", "dumpsys", "telecom"]
             elif cls.is_termux():
-                cmd = ["dumpsys", "telephony.registry"]
-            
+                cmd = ["dumpsys", "telecom"]
+
             if cmd:
                 res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
                 out = res.stdout
+
+                # Active call check (Recipient has answered)
+                if re.search(r"mCalls:\s*.*\[TC@\d+,\s*ACTIVE\b", out, re.DOTALL) or re.search(r"Foreground call:\s*\[TC@\d+,\s*ACTIVE\b", out):
+                    return {"state": "active", "answered": True, "source": "telecom"}
+
+                # Dialing / Connecting check (Recipient hasn't picked up yet)
+                if re.search(r"mCalls:\s*.*\[TC@\d+,\s*(DIALING|CONNECTING)\b", out, re.DOTALL) or re.search(r"Foreground call:\s*\[TC@\d+,\s*(DIALING|CONNECTING)\b", out):
+                    return {"state": "dialing", "answered": False, "source": "telecom"}
+
+                # Ringing check
+                if re.search(r"mCalls:\s*.*\[TC@\d+,\s*RINGING\b", out, re.DOTALL) or re.search(r"Foreground call:\s*\[TC@\d+,\s*RINGING\b", out):
+                    return {"state": "ringing", "answered": False, "source": "telecom"}
+
+                # Disconnected / idle check
+                if re.search(r"mCalls:\s*.*\[TC@\d+,\s*DISCONNECTED\b", out, re.DOTALL):
+                    return {"state": "idle", "answered": False, "source": "telecom"}
+
+                if "mCalls:\n    none" in out or "mCalls: []" in out or ("mCalls:" in out and "[TC@" not in out):
+                    return {"state": "idle", "answered": False, "source": "telecom"}
+
+            # 2. Fallback to dumpsys telephony.registry
+            reg_cmd = []
+            if cls.is_adb_available():
+                reg_cmd = ["adb", "shell", "dumpsys", "telephony.registry"]
+            elif cls.is_termux():
+                reg_cmd = ["dumpsys", "telephony.registry"]
+
+            if reg_cmd:
+                res = subprocess.run(reg_cmd, capture_output=True, text=True, timeout=3)
+                out = res.stdout
+
+                # mForegroundCallState: 3 = ACTIVE, 1 = DIALING, 2 = ALERTING, 0 = IDLE
+                fg_match = re.search(r"mForegroundCallState\s*[=:]\s*(\d+)", out)
+                if fg_match:
+                    fg_val = fg_match.group(1)
+                    if fg_val == "3":
+                        return {"state": "active", "answered": True, "source": "telephony.registry"}
+                    elif fg_val in ("1", "2"):
+                        return {"state": "dialing", "answered": False, "source": "telephony.registry"}
+                    elif fg_val == "0":
+                        return {"state": "idle", "answered": False, "source": "telephony.registry"}
+
+                # Fallback mCallState
                 match = re.search(r"mCallState\s*[=:]\s*(\d+)", out)
                 if match:
                     val = match.group(1)
-                    if val == "2":
-                        return "offhook"
+                    if val == "0":
+                        return {"state": "idle", "answered": False, "source": "telephony.registry"}
                     elif val == "1":
-                        return "ringing"
-                    elif val == "0":
-                        return "idle"
-                # Fallback substring checks
-                if "mCallState=2" in out or "mCallState: 2" in out:
-                    return "offhook"
-                elif "mCallState=1" in out or "mCallState: 1" in out:
-                    return "ringing"
-                elif "mCallState=0" in out or "mCallState: 0" in out:
-                    return "idle"
+                        return {"state": "ringing", "answered": False, "source": "telephony.registry"}
+                    elif val == "2":
+                        # Older Android with only aggregate offhook
+                        return {"state": "active", "answered": True, "source": "telephony.registry"}
         except Exception:
             pass
-        return "unknown"
+        return {"state": "unknown", "answered": False, "source": "none"}
 
