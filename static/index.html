@@ -81,7 +81,7 @@
           <div class="routing-card-header">
             <div class="routing-title">
               <span class="routing-badge-icon">📶</span>
-              <span class="routing-heading">Method A: Bluetooth Hands-Free Direct Audio</span>
+              <span class="routing-heading">Method A: Digital Audio Routing (Phone Link & VB-CABLE)</span>
             </div>
             <span class="bt-pill" id="bt-pill-status">Checking Phone...</span>
           </div>
@@ -121,6 +121,12 @@
             <button type="button" class="btn-subtle" id="btn-launch-phone-link">Open Phone Link</button>
           </div>
 
+          <div class="vbcable-guide-box" style="background: rgba(0, 242, 254, 0.05); border: 1px dashed rgba(0, 242, 254, 0.2); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 0.73rem; color: var(--text-muted); line-height: 1.4;">
+            <div>🎧 <strong>After Rebooting:</strong></div>
+            <div>1. In Windows Sound, set <strong>Default Mic</strong> to <code>CABLE Output (VB-Audio)</code>.</div>
+            <div>2. In dropdown above, set <strong>AI Audio Output</strong> to <code>CABLE Input (VB-Audio)</code>.</div>
+          </div>
+
           <div class="routing-footer">
             <div class="vu-wrapper">
               <span class="vu-tag">Caller Stream VU:</span>
@@ -131,7 +137,7 @@
             <div class="routing-actions">
               <button type="button" class="btn-subtle" id="btn-refresh-audio-devices" title="Rescan audio devices">Rescan</button>
               <button type="button" class="btn-subtle" id="btn-test-audio-output" title="Play test phrase through selected output">Test Voice</button>
-              <button type="button" class="btn-subtle" id="btn-open-sound-settings" title="Open Windows Sound Settings to set iQOO as Default Device">Windows Sound</button>
+              <button type="button" class="btn-subtle" id="btn-open-sound-settings" title="Open Sound Control Panel to set CABLE Output as Default Communication Device">Windows Sound</button>
             </div>
           </div>
         </div>
