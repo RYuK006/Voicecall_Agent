@@ -15,22 +15,54 @@ class GSMDialer:
 
     @classmethod
     def set_termux_bridge_url(cls, url: str) -> str:
-        """Dynamically configure the phone's Termux Wi-Fi bridge IP address."""
+        """Dynamically configure and sanitize the phone's Termux Wi-Fi bridge IP address."""
         global CURRENT_BRIDGE_URL
         url = url.strip()
-        if url and not url.startswith("http"):
+        if not url:
+            CURRENT_BRIDGE_URL = ""
+            return ""
+
+        # Normalize malformed scheme like 'http: /', 'http:/', 'http: //', etc.
+        url = re.sub(r"^http:\s*/*", "http://", url, flags=re.IGNORECASE)
+        if not url.startswith("http://") and not url.startswith("https://"):
             url = f"http://{url}"
+
+        # Fix common typo where user types dot instead of colon for port (e.g. 192.168.1.7.8080 -> 192.168.1.7:8080)
+        url = re.sub(r"(\d+\.\d+\.\d+\.\d+)\.(\d+)$", r"\1:\2", url)
+
+        # Remove trailing slashes
+        url = url.rstrip("/")
+
+        # If no port is specified on an IPv4 address, default to :8080
+        if re.search(r"http://\d+\.\d+\.\d+\.\d+$", url):
+            url = f"{url}:8080"
+
         CURRENT_BRIDGE_URL = url
         return CURRENT_BRIDGE_URL
+
+    @classmethod
+    def test_termux_bridge(cls, url: Optional[str] = None) -> Dict[str, Any]:
+        """Ping the Termux bridge to test reachability."""
+        bridge = url or cls.get_termux_bridge_url()
+        if not bridge:
+            return {"status": "error", "message": "No bridge URL configured"}
+        try:
+            req = urllib.request.Request(f"{bridge}/ping", headers={"User-Agent": "VoicecallAgent/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    return {"status": "connected", "bridge_url": bridge}
+        except Exception as e:
+            return {"status": "error", "message": str(e), "bridge_url": bridge}
+        return {"status": "error", "message": "Failed to connect", "bridge_url": bridge}
 
     @classmethod
     def get_termux_bridge_url(cls) -> str:
         """Get currently configured Termux Wi-Fi bridge URL."""
         global CURRENT_BRIDGE_URL
         if not CURRENT_BRIDGE_URL:
-            CURRENT_BRIDGE_URL = os.getenv("TERMUX_BRIDGE_URL", "").strip()
-            if CURRENT_BRIDGE_URL and not CURRENT_BRIDGE_URL.startswith("http"):
-                CURRENT_BRIDGE_URL = f"http://{CURRENT_BRIDGE_URL}"
+            raw = os.getenv("TERMUX_BRIDGE_URL", "").strip()
+            if raw:
+                cls.set_termux_bridge_url(raw)
         return CURRENT_BRIDGE_URL
 
     @classmethod
