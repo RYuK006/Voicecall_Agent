@@ -121,11 +121,19 @@ class BridgeConfigRequest(BaseModel):
 @app.post("/api/bridge-config")
 async def configure_termux_bridge(req: BridgeConfigRequest):
     cleaned = GSMDialer.set_termux_bridge_url(req.url)
-    return {"status": "ok", "bridge_url": cleaned}
+    result = GSMDialer.test_termux_bridge(cleaned)
+    return result
 
 @app.get("/api/bridge-config")
 async def get_termux_bridge_config():
-    return {"bridge_url": GSMDialer.get_termux_bridge_url()}
+    url = GSMDialer.get_termux_bridge_url()
+    if not url:
+        # Check default phone IP on current local subnet
+        test_ip = "http://192.168.1.7:8080"
+        probe = GSMDialer.test_termux_bridge(test_ip)
+        if probe.get("status") == "connected":
+            url = GSMDialer.set_termux_bridge_url(test_ip)
+    return {"bridge_url": url}
 
 @app.post("/api/launch-phone-link")
 async def launch_phone_link():
