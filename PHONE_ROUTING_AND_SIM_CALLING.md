@@ -38,13 +38,21 @@ If you have an Indian mobile plan (Jio / Airtel / Vi) with **free unlimited call
 ```
 
 ### How It Works:
-1. **Bluetooth Headset Emulation**: You pair your Windows PC with your Android smartphone via Bluetooth as an "Audio / Hands-Free Device" (using Windows Phone Link or a Bluetooth audio bridge).
-2. **Audio Routing**: The PC's microphone input routes from the phone call audio, and the AI agent's speech (Edge-TTS) feeds into the call's microphone channel.
-3. **Automated Dialing**: A lightweight ADB command or Android service triggers the call:
+1. **The Web Dashboard & Server Run on Your Laptop**:
+   - You open `http://localhost:8000` in Chrome/Edge on your **laptop**.
+   - Your laptop acts as the brain (LLM, speech recognition, neural TTS synthesis).
+2. **Bluetooth Headset Emulation (Zero Phone Mic Usage)**:
+   - Your laptop connects to your Android phone via Bluetooth as a **Hands-Free Audio Gateway (HFP/SCO)**.
+   - An Android phone cannot be a hands-free headset to itself; it only routes call audio digitally over Bluetooth when connected to an external device (your laptop).
+   - This bypasses and mutes the phone's physical microphone completely.
+3. **Automated Dialing via ADB**:
+   - A lightweight ADB command or Android service triggers the call:
    ```bash
    adb shell am start -a android.intent.action.CALL -d tel:+919876543210
    ```
-4. The call goes out through your actual SIM card. It costs **₹0 in carrier API fees** because it consumes your mobile recharge pack's unlimited talk-time!
+4. **The Phone Acts as a Cellular Modem**:
+   - Your phone just sits on the desk. The call goes out through your physical SIM card.
+   - It costs **₹0 in carrier API fees** because it consumes your mobile recharge pack's unlimited talk-time!
 
 ---
 
