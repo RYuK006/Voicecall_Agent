@@ -180,10 +180,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/bluetooth-status");
       const data = await res.json();
       if (data.status === "connected") {
-        btPillStatus.textContent = `🟢 ${data.connected_phone} Ready`;
+        btPillStatus.textContent = `🟢 ${data.message || data.connected_phone}`;
         btPillStatus.className = "bt-pill";
       } else {
-        btPillStatus.textContent = "⚠️ Connect Phone via Bluetooth";
+        btPillStatus.textContent = "⚠️ Connect Phone / VB-CABLE";
         btPillStatus.className = "bt-pill warning";
       }
     } catch (e) {
@@ -215,10 +215,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const label = device.label || `${device.kind} (${device.deviceId.slice(0, 5)}...)`;
         option.textContent = label;
 
+        const isVbOutput = /cable in|speakers.*vb-audio|cable.*input/i.test(label);
         const isBt = /bluetooth|hands-free|hfp|sco|headset|iqoo|phone/i.test(label);
 
         if (device.kind === "audioinput") {
           selectAudioInput.appendChild(option);
+          // Only auto-select Bluetooth hands-free audio for input to hear the caller; avoid loopback cable output
           if (isBt && !foundBtInput) {
             selectAudioInput.value = device.deviceId;
             selectedInputDeviceId = device.deviceId;
@@ -226,7 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } else if (device.kind === "audiooutput") {
           selectAudioOutput.appendChild(option);
-          if (isBt && !foundBtOutput) {
+          // Auto-select VB-CABLE Input (to route Priya into Phone Link) or Bluetooth Hands-Free
+          if ((isVbOutput || isBt) && !foundBtOutput) {
             selectAudioOutput.value = device.deviceId;
             selectedOutputDeviceId = device.deviceId;
             foundBtOutput = true;
@@ -326,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnOpenSoundSettings.addEventListener("click", async () => {
       try {
         await fetch("/api/open-sound-settings", { method: "POST" });
-        appendTranscript("system", "🔊 Opening Windows Sound Settings. Ensure 'iQOO Z9x 5G Hands-Free' is chosen as Default Communications Device.");
+        appendTranscript("system", "🔊 Sound Control Panel opened. In the 'Recording' tab, right-click 'CABLE Output (VB-Audio)' and click 'Set as Default Communication Device'.");
       } catch (e) {
         appendTranscript("system", "Could not open sound settings: " + e.message);
       }
