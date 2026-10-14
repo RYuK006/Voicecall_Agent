@@ -341,15 +341,51 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       if (data.bridge_url && inputBridgeUrl) {
         inputBridgeUrl.value = data.bridge_url;
+        // Check live connection status on initial load
+        fetch("/api/bridge-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: data.bridge_url })
+        }).then(r => r.json()).then(testData => {
+          if (testData.status === "connected" && btnSaveBridgeUrl) {
+            btnSaveBridgeUrl.textContent = "✓ Connected";
+            btnSaveBridgeUrl.style.color = "var(--accent-green)";
+            btnSaveBridgeUrl.style.borderColor = "var(--accent-green)";
+          }
+        }).catch(() => {});
       }
     } catch (e) {}
   }
 
+  if (inputBridgeUrl) {
+    inputBridgeUrl.addEventListener("blur", () => {
+      let v = inputBridgeUrl.value.trim();
+      if (v) {
+        v = v.replace(/^http:\s*\/*/, "http://");
+        v = v.replace(/(\d+\.\d+\.\d+\.\d+)\.(\d+)$/, "$1:$2");
+        if (!v.startsWith("http://") && !v.startsWith("https://")) {
+          v = "http://" + v;
+        }
+        inputBridgeUrl.value = v;
+      }
+    });
+  }
+
   if (btnSaveBridgeUrl && inputBridgeUrl) {
     btnSaveBridgeUrl.addEventListener("click", async () => {
-      const val = inputBridgeUrl.value.trim();
+      let val = inputBridgeUrl.value.trim();
+      val = val.replace(/^http:\s*\/*/, "http://");
+      val = val.replace(/(\d+\.\d+\.\d+\.\d+)\.(\d+)$/, "$1:$2");
+      if (val && !val.startsWith("http://") && !val.startsWith("https://")) {
+        val = "http://" + val;
+      }
+      inputBridgeUrl.value = val;
+
       btnSaveBridgeUrl.disabled = true;
       btnSaveBridgeUrl.textContent = "Connecting...";
+      btnSaveBridgeUrl.style.color = "";
+      btnSaveBridgeUrl.style.borderColor = "";
+
       try {
         const res = await fetch("/api/bridge-config", {
           method: "POST",
@@ -358,19 +394,30 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         const data = await res.json();
         if (data.status === "connected") {
+          inputBridgeUrl.value = data.bridge_url;
           btnSaveBridgeUrl.textContent = "✓ Connected";
+          btnSaveBridgeUrl.style.color = "var(--accent-green)";
+          btnSaveBridgeUrl.style.borderColor = "var(--accent-green)";
           appendTranscript("system", `📱 Connected to Termux Phone Bridge at ${data.bridge_url}`);
         } else {
           btnSaveBridgeUrl.textContent = "⚠️ Unreachable";
-          appendTranscript("system", `⚠️ Could not reach Termux at ${val}. Ensure 'python termux_bridge.py' is running on your phone!`);
+          btnSaveBridgeUrl.style.color = "#f59e0b";
+          btnSaveBridgeUrl.style.borderColor = "#f59e0b";
+          appendTranscript("system", `⚠️ Could not reach Termux at ${val}. Error: ${data.message || "Connection refused"}. Make sure 'python termux_bridge.py' is running on your phone!`);
+          setTimeout(() => {
+            btnSaveBridgeUrl.textContent = "Connect";
+            btnSaveBridgeUrl.style.color = "";
+            btnSaveBridgeUrl.style.borderColor = "";
+          }, 3500);
         }
       } catch (err) {
         btnSaveBridgeUrl.textContent = "Error";
-      } finally {
+        appendTranscript("system", `Bridge connection error: ${err.message}`);
         setTimeout(() => {
-          btnSaveBridgeUrl.disabled = false;
           btnSaveBridgeUrl.textContent = "Connect";
         }, 3000);
+      } finally {
+        btnSaveBridgeUrl.disabled = false;
       }
     });
   }
