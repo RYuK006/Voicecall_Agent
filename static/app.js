@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let shouldEndCallAfterSpeech = false;
   let silenceTimer = null;
   let simMonitorInterval = null;
-  let wasSimOffhook = false;
+  let isWaitingSimAnswer = false;
 
   function resetSilenceTimer() {
     clearTimeout(silenceTimer);
@@ -68,21 +68,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function startSimMonitor() {
     stopSimMonitor();
-    let hadSimActivity = false;
+    let hadSimActive = false;
+    let pollCount = 0;
+
     simMonitorInterval = setInterval(async () => {
-      if (!isCallActive) return;
       try {
         const res = await fetch("/api/sim-call-status");
         const data = await res.json();
-        if (data.state === "offhook" || data.state === "ringing") {
-          hadSimActivity = true;
-        } else if (data.state === "idle" && hadSimActivity) {
-          appendTranscript("system", "📞 Cellular call disconnected on phone.");
-          endCall();
-          stopSimMonitor();
+        pollCount++;
+
+        // 1. If currently dialing and waiting for recipient to pick up (AI MUST NOT SPEAK YET)
+        if (isWaitingSimAnswer) {
+          if (data.state === "dialing" || data.state === "ringing") {
+            liveCue.textContent = data.state === "ringing" ?
+              "🔔 Recipient phone ringing... Waiting for user to pick up." :
+              "📞 Dialing outgoing call... Connecting cellular line.";
+          }
+          else if (data.state === "active" || data.answered === true) {
+            // RECIPIENT ANSWERED!
+            isWaitingSimAnswer = false;
+            hadSimActive = true;
+            appendTranscript("system", "🟢 Call answered by recipient! Connecting AI voice stream now...");
+            // NOW we initialize the AI call!
+            startCall();
+          }
+          else if (data.state === "idle" && pollCount > 3) {
+            // Call was rejected, busy, or canceled before pickup
+            isWaitingSimAnswer = false;
+            stopSimMonitor();
+            appendTranscript("system", "❌ Recipient did not answer or declined the call.");
+            updateCallState("idle");
+          }
+          else if (data.state === "unknown" && pollCount > 3) {
+            // Simulated/fallback mode if no telemetry available
+            appendTranscript("system", "ℹ️ Simulated SIM mode: Starting AI voice stream.");
+            isWaitingSimAnswer = false;
+            hadSimActive = true;
+            startCall();
+          }
         }
-      } catch(e){}
-    }, 1500);
+        // 2. If call is active and conversation is running
+        else if (isCallActive) {
+          if (data.state === "active") {
+            hadSimActive = true;
+          } else if (data.state === "idle" && hadSimActive) {
+            appendTranscript("system", "📞 Cellular call disconnected on phone.");
+            endCall();
+            stopSimMonitor();
+          }
+        }
+      } catch (e) {
+        console.warn("SIM status polling error:", e);
+      }
+    }, 1000);
   }
 
   function stopSimMonitor() {
@@ -296,6 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function startSimCall() {
+    if (isCallActive || isWaitingSimAnswer) return;
+
     const selectedOpt = guestSelect.options[guestSelect.selectedIndex];
     const guestText = selectedOpt ? selectedOpt.textContent : "";
     let phone = "";
@@ -310,7 +350,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!phone) return;
 
-    appendTranscript("system", `Triggering cellular call via phone's physical SIM to ${phone}...`);
+    appendTranscript("system", `📞 Initiating cellular call via phone SIM to ${phone}...`);
+    updateCallState("dialing");
+    isWaitingSimAnswer = true;
+
     try {
       const res = await fetch("/api/dial-sim", {
         method: "POST",
@@ -319,12 +362,19 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await res.json();
       appendTranscript("system", `SIM Dialer: ${data.message}`);
+
+      if (data.status === "error") {
+        updateCallState("idle");
+        isWaitingSimAnswer = false;
+        return;
+      }
       
+      // Start monitoring Android telephony state (wait for ACTIVE before speaking!)
       startSimMonitor();
-      // Also start local voice audio session so AI listens and speaks
-      startCall();
     } catch (err) {
       appendTranscript("system", `SIM Call error: ${err.message}`);
+      updateCallState("idle");
+      isWaitingSimAnswer = false;
     }
   }
 
@@ -430,6 +480,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function endCall() {
+    isWaitingSimAnswer = false;
     clearSilenceTimer();
     stopSimMonitor();
     shouldEndCallAfterSpeech = false;
@@ -605,6 +656,7 @@ document.addEventListener("DOMContentLoaded", () => {
       callStatusDot.className = "status-dot";
       callStatusLabel.textContent = "Standby / Idle";
       btnStartCall.disabled = false;
+      btnSimCall.disabled = false;
       btnToggleMic.disabled = true;
       btnEndCall.disabled = true;
       manualTextInput.disabled = true;
@@ -612,11 +664,25 @@ document.addEventListener("DOMContentLoaded", () => {
       guestSelect.disabled = false;
       langSelect.disabled = false;
       genderSelect.disabled = false;
-      liveCue.textContent = "Click 'Start Call' to begin conversational RSVP test";
+      liveCue.textContent = "Click 'Web Call' or 'Call via SIM' to begin conversational test";
+    } else if (state === "dialing") {
+      callStatusDot.className = "status-dot thinking";
+      callStatusLabel.textContent = "Dialing Recipient...";
+      btnStartCall.disabled = true;
+      btnSimCall.disabled = true;
+      btnToggleMic.disabled = true;
+      btnEndCall.disabled = false;
+      manualTextInput.disabled = true;
+      btnSendManual.disabled = true;
+      guestSelect.disabled = true;
+      langSelect.disabled = true;
+      genderSelect.disabled = true;
+      liveCue.textContent = "📞 Ringing recipient... Waiting for them to pick up.";
     } else if (state === "connecting") {
       callStatusDot.className = "status-dot thinking";
       callStatusLabel.textContent = "Connecting...";
       btnStartCall.disabled = true;
+      btnSimCall.disabled = true;
       btnToggleMic.disabled = true;
       btnEndCall.disabled = false;
       guestSelect.disabled = true;
@@ -626,6 +692,7 @@ document.addEventListener("DOMContentLoaded", () => {
       callStatusDot.className = "status-dot active";
       callStatusLabel.textContent = "In Call";
       btnStartCall.disabled = true;
+      btnSimCall.disabled = true;
       btnToggleMic.disabled = false;
       btnEndCall.disabled = false;
       manualTextInput.disabled = false;
