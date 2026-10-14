@@ -564,6 +564,24 @@ select:focus, input[type="text"]:focus, textarea:focus {
   text-align: center;
 }
 
+.btn-pickup-ready {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 50px;
+  padding: 8px 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-pickup-ready:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.6);
+}
+
 /* Transcript Box */
 .transcript-box {
   background: rgba(10, 14, 23, 0.85);
