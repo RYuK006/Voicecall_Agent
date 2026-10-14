@@ -52,5 +52,14 @@
     "dietary_preference": "Vegetarian",
     "id": "GST-105",
     "last_call_at": "2026-10-14T01:41:04.642111+00:00"
+  },
+  {
+    "name": "Adithya",
+    "phone": "+91 8761059019",
+    "preferred_language": "Malayalam",
+    "status": "Pending",
+    "attendees_count": 0,
+    "dietary_preference": "None",
+    "id": "GST-106"
   }
 ]
