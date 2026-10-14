@@ -180,6 +180,7 @@ async def websocket_call_endpoint(websocket: WebSocket):
         guest_id = init_data.get("guest_id")
         lang = init_data.get("lang", DEFAULT_LANG)
         gender = init_data.get("gender", DEFAULT_GENDER)
+        initial_speech = init_data.get("initial_speech")
 
         guest = None
         if guest_id:
@@ -187,8 +188,13 @@ async def websocket_call_endpoint(websocket: WebSocket):
         
         agent = ConversationalAgent(guest=guest, lang=lang)
 
-        # Generate and synthesize initial greeting
-        greeting_text = agent.get_greeting()
+        # Generate and synthesize initial greeting or reply to recipient's Hello
+        if initial_speech:
+            res = agent.respond(initial_speech)
+            greeting_text = res.get("reply", agent.get_greeting())
+        else:
+            greeting_text = agent.get_greeting()
+
         audio_b64 = await TTSEngine.synthesize_to_base64(
             text=greeting_text,
             lang_code=lang,
