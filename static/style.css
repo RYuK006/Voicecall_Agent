@@ -458,6 +458,23 @@ select:focus, input[type="text"]:focus, textarea:focus {
   gap: 12px;
 }
 
+.audio-route-note {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  background: rgba(0, 242, 254, 0.05);
+  border: 1px dashed rgba(0, 242, 254, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.audio-route-note strong {
+  color: var(--accent-cyan);
+}
+
 .btn {
   flex: 1;
   display: inline-flex;
