@@ -115,6 +115,18 @@ async def get_sim_call_status():
 async def get_bluetooth_status():
     return GSMDialer.get_bluetooth_status()
 
+class BridgeConfigRequest(BaseModel):
+    url: str
+
+@app.post("/api/bridge-config")
+async def configure_termux_bridge(req: BridgeConfigRequest):
+    cleaned = GSMDialer.set_termux_bridge_url(req.url)
+    return {"status": "ok", "bridge_url": cleaned}
+
+@app.get("/api/bridge-config")
+async def get_termux_bridge_config():
+    return {"bridge_url": GSMDialer.get_termux_bridge_url()}
+
 class TTSRequest(BaseModel):
     text: str
     lang: Optional[str] = DEFAULT_LANG
