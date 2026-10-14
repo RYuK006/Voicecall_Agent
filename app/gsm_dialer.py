@@ -2,10 +2,36 @@ import subprocess
 import shutil
 import sys
 import re
+import os
+import json
+import urllib.request
+import urllib.parse
 from typing import Dict, Any
 
+CURRENT_BRIDGE_URL = os.getenv("TERMUX_BRIDGE_URL", "")
+
 class GSMDialer:
-    """Manages cellular SIM dialing via Android ADB (from PC) or Termux-API (directly on phone)."""
+    """Manages cellular SIM dialing via Termux Wi-Fi Bridge, Android ADB, or native Termux."""
+
+    @classmethod
+    def set_termux_bridge_url(cls, url: str) -> str:
+        """Dynamically configure the phone's Termux Wi-Fi bridge IP address."""
+        global CURRENT_BRIDGE_URL
+        url = url.strip()
+        if url and not url.startswith("http"):
+            url = f"http://{url}"
+        CURRENT_BRIDGE_URL = url
+        return CURRENT_BRIDGE_URL
+
+    @classmethod
+    def get_termux_bridge_url(cls) -> str:
+        """Get currently configured Termux Wi-Fi bridge URL."""
+        global CURRENT_BRIDGE_URL
+        if not CURRENT_BRIDGE_URL:
+            CURRENT_BRIDGE_URL = os.getenv("TERMUX_BRIDGE_URL", "").strip()
+            if CURRENT_BRIDGE_URL and not CURRENT_BRIDGE_URL.startswith("http"):
+                CURRENT_BRIDGE_URL = f"http://{CURRENT_BRIDGE_URL}"
+        return CURRENT_BRIDGE_URL
 
     @classmethod
     def is_termux(cls) -> bool:
@@ -24,7 +50,22 @@ class GSMDialer:
         if not clean_number:
             return {"status": "error", "message": "Invalid phone number"}
 
-        # 1. If running standalone on Android inside Termux:
+        # 1. Over Termux Wi-Fi Bridge (Zero USB cable, phone anywhere on Wi-Fi):
+        bridge = cls.get_termux_bridge_url()
+        if bridge:
+            try:
+                data = json.dumps({"phone": clean_number}).encode("utf-8")
+                req = urllib.request.Request(
+                    f"{bridge}/dial",
+                    data=data,
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    return json.loads(response.read().decode())
+            except Exception as e:
+                return {"status": "error", "message": f"Termux Bridge ({bridge}) dial error: {e}"}
+
+        # 2. If running standalone on Android inside Termux:
         if cls.is_termux():
             try:
                 cmd = ["termux-telephony-call", clean_number]
@@ -35,7 +76,7 @@ class GSMDialer:
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
-        # 2. If running on PC connected to Android phone via ADB:
+        # 3. If running on PC connected to Android phone via ADB:
         if cls.is_adb_available():
             try:
                 cmd = [
@@ -52,12 +93,25 @@ class GSMDialer:
 
         return {
             "status": "simulated",
-            "message": f"Neither ADB nor Termux detected. Simulated dialing {clean_number}."
+            "message": f"Neither Termux Bridge nor ADB detected. Please run 'python termux_bridge.py' on phone."
         }
 
     @classmethod
     def end_call(cls) -> Dict[str, Any]:
         """End the ongoing cellular phone call."""
+        bridge = cls.get_termux_bridge_url()
+        if bridge:
+            try:
+                req = urllib.request.Request(
+                    f"{bridge}/hangup",
+                    data=b"{}",
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=3) as response:
+                    return json.loads(response.read().decode())
+            except Exception:
+                pass
+
         if cls.is_adb_available():
             try:
                 subprocess.run(["adb", "shell", "input", "keyevent", "6"], timeout=5)
@@ -89,6 +143,18 @@ class GSMDialer:
         - 'disconnected': Call just disconnected
         """
         try:
+            # 0. Check Termux Wi-Fi Bridge first
+            bridge = cls.get_termux_bridge_url()
+            if bridge:
+                try:
+                    req = urllib.request.Request(f"{bridge}/status")
+                    with urllib.request.urlopen(req, timeout=2) as response:
+                        res_body = json.loads(response.read().decode())
+                        res_body["source"] = "termux-bridge"
+                        return res_body
+                except Exception:
+                    pass
+
             # 1. Try dumpsys telecom (gold standard for ACTIVE vs DIALING)
             cmd = []
             if cls.is_adb_available():
