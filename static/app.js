@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const vuMeterFill = document.getElementById("vu-meter-fill");
   const btnRefreshAudioDevices = document.getElementById("btn-refresh-audio-devices");
   const btnTestAudioOutput = document.getElementById("btn-test-audio-output");
+  const btnOpenSoundSettings = document.getElementById("btn-open-sound-settings");
   const inputBridgeUrl = document.getElementById("input-bridge-url");
   const btnSaveBridgeUrl = document.getElementById("btn-save-bridge-url");
   const btnLaunchPhoneLink = document.getElementById("btn-launch-phone-link");
@@ -303,11 +304,34 @@ document.addEventListener("DOMContentLoaded", () => {
     appendTranscript("system", `Audio Output switched to: ${selectAudioOutput.options[selectAudioOutput.selectedIndex].text}`);
   });
 
-  btnRefreshAudioDevices.addEventListener("click", () => {
-    refreshAudioDevices();
+  btnRefreshAudioDevices.addEventListener("click", async () => {
+    btnRefreshAudioDevices.disabled = true;
+    btnRefreshAudioDevices.textContent = "Scanning...";
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());
+      }
+    } catch(err) {
+      appendTranscript("system", "Notice: Click 'Allow' when Chrome prompts for microphone permission so Bluetooth names appear.");
+    }
+    await refreshAudioDevices();
     checkBluetoothPhoneStatus();
-    appendTranscript("system", "Rescanning audio devices & Bluetooth phone connection...");
+    appendTranscript("system", "Audio devices refreshed.");
+    btnRefreshAudioDevices.disabled = false;
+    btnRefreshAudioDevices.textContent = "Rescan";
   });
+
+  if (btnOpenSoundSettings) {
+    btnOpenSoundSettings.addEventListener("click", async () => {
+      try {
+        await fetch("/api/open-sound-settings", { method: "POST" });
+        appendTranscript("system", "🔊 Opening Windows Sound Settings. Ensure 'iQOO Z9x 5G Hands-Free' is chosen as Default Communications Device.");
+      } catch (e) {
+        appendTranscript("system", "Could not open sound settings: " + e.message);
+      }
+    });
+  }
 
   btnTestAudioOutput.addEventListener("click", async () => {
     btnTestAudioOutput.disabled = true;
