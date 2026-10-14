@@ -52,6 +52,21 @@ By pairing your Android phone to your Windows PC or Linux machine as a Bluetooth
    - Priya's neural voice travels: `FastAPI TTS -> Bluetooth SCO -> Phone Modem -> Cellular Tower`.
    - **Zero microphone involvement.**
 
+### Solution A.2: VB-Audio Virtual Cable + Microsoft Phone Link (Recommended on Windows 10/11)
+
+If Windows pairs with your phone via **Microsoft Phone Link** instead of a raw Bluetooth audio driver:
+1. **Install VB-CABLE**: Run `VBCABLE_Setup_x64.exe` as Administrator and reboot Windows.
+2. **Configure Windows Communication Devices**:
+   - Press the **"Windows Sound"** button on the dashboard (or run `mmsys.cpl`).
+   - In the **Recording** tab: Right-click `CABLE Output (VB-Audio Virtual Cable)` -> **Set as Default Communication Device**.
+3. **Configure Web Dashboard**:
+   - In the dashboard, set **Audio Output (AI Voice)** to `CABLE Input (VB-Audio Virtual Cable)`.
+4. **How It Works**:
+   - Priya speaks -> browser outputs to `CABLE Input`.
+   - VB-CABLE loops sound directly into `CABLE Output`.
+   - Phone Link reads `CABLE Output` as its microphone, transmitting Priya's voice over Bluetooth into the phone call with zero background noise.
+   - Phone Link plays the caller's voice through your PC speakers, where Chrome's STT transcribes the caller's responses in real-time.
+
 ---
 
 ## Solution B: Digital Telephony (Twilio / Plivo) with Verified Personal Caller ID
