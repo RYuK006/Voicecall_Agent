@@ -106,6 +106,11 @@ async def end_sim_call():
     result = GSMDialer.end_call()
     return result
 
+@app.get("/api/sim-call-status")
+async def get_sim_call_status():
+    state = GSMDialer.get_call_state()
+    return {"state": state}
+
 class TTSRequest(BaseModel):
     text: str
     lang: Optional[str] = DEFAULT_LANG
@@ -180,7 +185,7 @@ async def websocket_call_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "agent_thinking"})
 
                 # Generate conversational response
-                agent_response, rsvp_update = await agent.generate_response(user_text)
+                agent_response, rsvp_update, is_closing = await agent.generate_response(user_text)
 
                 # Synthesize neural voice audio
                 audio_b64 = await TTSEngine.synthesize_to_base64(
@@ -195,7 +200,8 @@ async def websocket_call_endpoint(websocket: WebSocket):
                     "text": agent_response,
                     "audio_base64": audio_b64,
                     "rsvp_update": rsvp_update,
-                    "guest": agent.guest
+                    "guest": agent.guest,
+                    "is_closing": is_closing
                 })
 
             elif msg_type == "change_lang":
