@@ -127,6 +127,15 @@ async def configure_termux_bridge(req: BridgeConfigRequest):
 async def get_termux_bridge_config():
     return {"bridge_url": GSMDialer.get_termux_bridge_url()}
 
+@app.post("/api/launch-phone-link")
+async def launch_phone_link():
+    """Launch Microsoft Phone Link on Windows desktop."""
+    try:
+        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\Microsoft.YourPhone_8wekyb3d8bbwe!App"])
+        return {"status": "ok", "message": "Microsoft Phone Link launched"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 class TTSRequest(BaseModel):
     text: str
     lang: Optional[str] = DEFAULT_LANG
