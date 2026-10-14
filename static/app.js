@@ -31,6 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputBridgeUrl = document.getElementById("input-bridge-url");
   const btnSaveBridgeUrl = document.getElementById("btn-save-bridge-url");
   const btnLaunchPhoneLink = document.getElementById("btn-launch-phone-link");
+  const pickupOverrideContainer = document.getElementById("pickup-override-container");
+  const btnForcePickup = document.getElementById("btn-force-pickup");
 
   // DOM Elements - Dashboard
   const statTotal = document.getElementById("stat-total");
@@ -103,26 +105,20 @@ document.addEventListener("DOMContentLoaded", () => {
               "📞 Dialing outgoing call... Connecting cellular line.";
           }
           else if (data.state === "active" || data.answered === true) {
-            // RECIPIENT ANSWERED!
-            isWaitingSimAnswer = false;
-            hadSimActive = true;
-            appendTranscript("system", "🟢 Call answered by recipient! Connecting AI voice stream now...");
-            // NOW we initialize the AI call!
-            startCall();
+            // Telephony state active (answered)
+            onRecipientAnswered();
           }
-          else if (data.state === "idle" && pollCount > 3) {
-            // Call was rejected, busy, or canceled before pickup
+          else if (data.state === "idle" && pollCount > 6) {
+            // Call was rejected or hung up before answer
             isWaitingSimAnswer = false;
             stopSimMonitor();
-            appendTranscript("system", "❌ Recipient did not answer or declined the call.");
+            if (pickupOverrideContainer) pickupOverrideContainer.style.display = "none";
+            appendTranscript("system", "❌ Call disconnected on phone before answer.");
             updateCallState("idle");
+            stopSpeechRecognition();
           }
-          else if (data.state === "unknown" && pollCount > 3) {
-            // Simulated/fallback mode if no telemetry available
-            appendTranscript("system", "ℹ️ Simulated SIM mode: Starting AI voice stream.");
-            isWaitingSimAnswer = false;
-            hadSimActive = true;
-            startCall();
+          else if (pollCount === 12) {
+            appendTranscript("system", "⏳ Phone is ringing... AI will start automatically when recipient says 'Hello', or click 'Recipient Answered' above.");
           }
         }
         // 2. If call is active and conversation is running
@@ -139,6 +135,14 @@ document.addEventListener("DOMContentLoaded", () => {
         console.warn("SIM status polling error:", e);
       }
     }, 1000);
+  }
+
+  function onRecipientAnswered(initialSpeech = null) {
+    if (!isWaitingSimAnswer) return;
+    isWaitingSimAnswer = false;
+    if (pickupOverrideContainer) pickupOverrideContainer.style.display = "none";
+    appendTranscript("system", "🟢 Recipient answered! Starting Priya AI...");
+    startCall(initialSpeech);
   }
 
   function stopSimMonitor() {
@@ -646,6 +650,11 @@ document.addEventListener("DOMContentLoaded", () => {
     appendTranscript("system", `📞 Initiating cellular call via phone SIM to ${phone}...`);
     updateCallState("dialing");
     isWaitingSimAnswer = true;
+    if (pickupOverrideContainer) pickupOverrideContainer.style.display = "block";
+    liveCue.textContent = "📞 Dialing... AI is listening silently and will speak when recipient says 'Hello'.";
+
+    // Start speech recognition in listening mode right away so if caller says "Hello", we catch it immediately!
+    initSpeechRecognition(langSelect.value);
 
     try {
       const res = await fetch("/api/dial-sim", {
@@ -659,16 +668,26 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.status === "error") {
         updateCallState("idle");
         isWaitingSimAnswer = false;
+        if (pickupOverrideContainer) pickupOverrideContainer.style.display = "none";
+        stopSpeechRecognition();
         return;
       }
       
-      // Start monitoring Android telephony state (wait for ACTIVE before speaking!)
+      // Start monitoring Android telephony state
       startSimMonitor();
     } catch (err) {
       appendTranscript("system", `SIM Call error: ${err.message}`);
       updateCallState("idle");
       isWaitingSimAnswer = false;
+      if (pickupOverrideContainer) pickupOverrideContainer.style.display = "none";
+      stopSpeechRecognition();
     }
+  }
+
+  if (btnForcePickup) {
+    btnForcePickup.addEventListener("click", () => {
+      onRecipientAnswered();
+    });
   }
 
   // Manual fallback input
@@ -687,7 +706,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ws.send(JSON.stringify({ type: "user_speech", text: val }));
   }
 
-  function startCall() {
+  function startCall(initialSpeech = null) {
     if (isCallActive) return;
 
     const guestId = guestSelect.value;
@@ -709,11 +728,12 @@ document.addEventListener("DOMContentLoaded", () => {
       startCallTimer();
       resetSilenceTimer();
 
-      // Send initial handshake
+      // Send initial handshake with optional initial_speech
       ws.send(JSON.stringify({
         guest_id: guestId,
         lang: lang,
-        gender: gender
+        gender: gender,
+        initial_speech: initialSpeech
       }));
 
       // Initialize Web Speech Recognition
@@ -774,6 +794,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function endCall() {
     isWaitingSimAnswer = false;
+    if (pickupOverrideContainer) pickupOverrideContainer.style.display = "none";
     clearSilenceTimer();
     stopSimMonitor();
     shouldEndCallAfterSpeech = false;
@@ -833,6 +854,13 @@ document.addEventListener("DOMContentLoaded", () => {
     recognition.onresult = (e) => {
       const lastIndex = e.results.length - 1;
       const transcript = e.results[lastIndex][0].transcript.trim();
+
+      if (isWaitingSimAnswer && transcript) {
+        // Voice Activity Detection: recipient said something like "Hello"!
+        appendTranscript("user", transcript);
+        onRecipientAnswered(transcript);
+        return;
+      }
 
       if (transcript && ws && ws.readyState === WebSocket.OPEN && !isMicMuted) {
         clearSilenceTimer();
