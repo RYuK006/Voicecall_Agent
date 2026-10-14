@@ -111,6 +111,10 @@ async def get_sim_call_status():
     info = GSMDialer.get_detailed_call_state()
     return info
 
+@app.get("/api/bluetooth-status")
+async def get_bluetooth_status():
+    return GSMDialer.get_bluetooth_status()
+
 class TTSRequest(BaseModel):
     text: str
     lang: Optional[str] = DEFAULT_LANG
