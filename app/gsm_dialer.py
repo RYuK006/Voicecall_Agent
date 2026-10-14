@@ -91,9 +91,21 @@ class GSMDialer:
             except Exception as e:
                 return {"status": "error", "message": str(e)}
 
+        # 4. Windows Phone Link / System Tel Protocol Handler:
+        if sys.platform == "win32":
+            try:
+                os.startfile(f"tel:{clean_number}")
+                return {
+                    "status": "ok",
+                    "mode": "phone_link",
+                    "message": f"Dialing {clean_number} via Windows Phone Link"
+                }
+            except Exception:
+                pass
+
         return {
             "status": "simulated",
-            "message": f"Neither Termux Bridge nor ADB detected. Please run 'python termux_bridge.py' on phone."
+            "message": f"Neither Termux Bridge nor ADB detected. Please run 'python termux_bridge.py' on phone or connect Windows Phone Link."
         }
 
     @classmethod
