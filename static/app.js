@@ -46,6 +46,51 @@ document.addEventListener("DOMContentLoaded", () => {
   let recognition = null;
   let currentAudio = null;
   let currentGuest = null;
+  let shouldEndCallAfterSpeech = false;
+  let silenceTimer = null;
+  let simMonitorInterval = null;
+  let wasSimOffhook = false;
+
+  function resetSilenceTimer() {
+    clearTimeout(silenceTimer);
+    if (!isCallActive) return;
+    silenceTimer = setTimeout(() => {
+      if (isCallActive) {
+        appendTranscript("system", "⏱️ 25 seconds of silence detected. Concluding call...");
+        endCall();
+      }
+    }, 25000);
+  }
+
+  function clearSilenceTimer() {
+    clearTimeout(silenceTimer);
+  }
+
+  function startSimMonitor() {
+    stopSimMonitor();
+    let hadSimActivity = false;
+    simMonitorInterval = setInterval(async () => {
+      if (!isCallActive) return;
+      try {
+        const res = await fetch("/api/sim-call-status");
+        const data = await res.json();
+        if (data.state === "offhook" || data.state === "ringing") {
+          hadSimActivity = true;
+        } else if (data.state === "idle" && hadSimActivity) {
+          appendTranscript("system", "📞 Cellular call disconnected on phone.");
+          endCall();
+          stopSimMonitor();
+        }
+      } catch(e){}
+    }, 1500);
+  }
+
+  function stopSimMonitor() {
+    if (simMonitorInterval) {
+      clearInterval(simMonitorInterval);
+      simMonitorInterval = null;
+    }
+  }
 
   // Language mapping to Web Speech API locale
   const langLocales = {
@@ -275,6 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       appendTranscript("system", `SIM Dialer: ${data.message}`);
       
+      startSimMonitor();
       // Also start local voice audio session so AI listens and speaks
       startCall();
     } catch (err) {
@@ -292,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const val = manualTextInput.value.trim();
     if (!val || !ws || ws.readyState !== WebSocket.OPEN) return;
     
+    clearSilenceTimer();
     appendTranscript("user", val);
     manualTextInput.value = "";
     ws.send(JSON.stringify({ type: "user_speech", text: val }));
@@ -314,8 +361,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ws.onopen = () => {
       isCallActive = true;
+      shouldEndCallAfterSpeech = false;
       updateCallState("connected");
       startCallTimer();
+      resetSilenceTimer();
 
       // Send initial handshake
       ws.send(JSON.stringify({
@@ -332,6 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = JSON.parse(event.data);
 
       if (data.type === "agent_thinking") {
+        clearSilenceTimer();
         updateCallState("thinking");
       } 
       else if (data.type === "agent_speech") {
@@ -348,9 +398,19 @@ document.addEventListener("DOMContentLoaded", () => {
           loadStats();
         }
 
+        shouldEndCallAfterSpeech = Boolean(data.is_closing);
+        if (shouldEndCallAfterSpeech) {
+          appendTranscript("system", "📞 Call wrap-up detected. Will disconnect naturally once agent finishes speaking.");
+        }
+
         // Play received neural TTS audio
         if (data.audio_base64) {
           await playAudioBase64(data.audio_base64);
+        } else if (shouldEndCallAfterSpeech) {
+          setTimeout(() => {
+            appendTranscript("system", "✅ Call ended automatically (RSVP recorded).");
+            endCall();
+          }, 1500);
         }
       }
       else if (data.type === "call_ended") {
@@ -370,10 +430,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function endCall() {
+    clearSilenceTimer();
+    stopSimMonitor();
+    shouldEndCallAfterSpeech = false;
     isCallActive = false;
     stopCallTimer();
     stopAudio();
     stopSpeechRecognition();
+
+    try {
+      fetch("/api/end-sim", { method: "POST" });
+    } catch (e) {}
 
     if (ws) {
       if (ws.readyState === WebSocket.OPEN) {
@@ -424,6 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const transcript = e.results[lastIndex][0].transcript.trim();
 
       if (transcript && ws && ws.readyState === WebSocket.OPEN && !isMicMuted) {
+        clearSilenceTimer();
         appendTranscript("user", transcript);
         ws.send(JSON.stringify({ type: "user_speech", text: transcript }));
       }
@@ -468,21 +536,40 @@ document.addEventListener("DOMContentLoaded", () => {
     currentAudio.onplay = () => {
       waveContainer.classList.add("speaking");
       avatarRing.classList.add("call-active");
-      liveCue.textContent = "Agent is speaking...";
+      liveCue.textContent = shouldEndCallAfterSpeech ? "Agent Priya is concluding call..." : "Agent Priya is speaking...";
     };
 
     currentAudio.onended = () => {
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
+
+      if (shouldEndCallAfterSpeech) {
+        liveCue.textContent = "Call concluded. Disconnecting...";
+        setTimeout(() => {
+          appendTranscript("system", "✅ Call ended automatically (RSVP recorded).");
+          endCall();
+        }, 1000);
+        return;
+      }
+
       updateCallState("listening");
       liveCue.textContent = "Listening to you... Speak into your microphone.";
+      resetSilenceTimer();
     };
 
     currentAudio.onerror = (err) => {
       console.error("Audio playback error:", err);
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
+      if (shouldEndCallAfterSpeech) {
+        setTimeout(() => {
+          appendTranscript("system", "✅ Call ended automatically (RSVP recorded).");
+          endCall();
+        }, 1000);
+        return;
+      }
       updateCallState("listening");
+      resetSilenceTimer();
     };
 
     try {
@@ -491,6 +578,15 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("Autoplay policy prevented audio:", e);
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
+      if (shouldEndCallAfterSpeech) {
+        setTimeout(() => {
+          appendTranscript("system", "✅ Call ended automatically (RSVP recorded).");
+          endCall();
+        }, 1000);
+        return;
+      }
+      updateCallState("listening");
+      resetSilenceTimer();
     }
   }
 
