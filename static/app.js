@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let silenceTimer = null;
   let simMonitorInterval = null;
   let isWaitingSimAnswer = false;
+  let isAgentSpeaking = false;
 
   // Audio Device State (Method A Bluetooth Routing)
   let selectedInputDeviceId = "default";
@@ -806,6 +807,9 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (data.type === "call_ended") {
         endCall();
       }
+      else if (data.type === "error") {
+        appendTranscript("system", `⚠️ Server error: ${data.message}`);
+      }
     };
 
     ws.onerror = (err) => {
@@ -873,12 +877,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (recognition) {
+      try { recognition.stop(); } catch(e){}
+      recognition = null;
+    }
+
     recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = langLocales[lang] || "hi-IN";
 
     recognition.onresult = (e) => {
+      if (isAgentSpeaking) return;
+
       const lastIndex = e.results.length - 1;
       const transcript = e.results[lastIndex][0].transcript.trim();
 
@@ -904,7 +915,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     recognition.onend = () => {
       // Auto-restart recognition if call is active and unmuted
-      if (isCallActive && !isMicMuted && recognition) {
+      if (isCallActive && !isMicMuted && recognition && !isAgentSpeaking) {
         try { recognition.start(); } catch(e){}
       }
     };
@@ -942,12 +953,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     currentAudio.onplay = () => {
+      isAgentSpeaking = true;
       waveContainer.classList.add("speaking");
       avatarRing.classList.add("call-active");
       liveCue.textContent = shouldEndCallAfterSpeech ? "Agent Priya is concluding call..." : "Agent Priya is speaking...";
     };
 
     currentAudio.onended = () => {
+      setTimeout(() => { isAgentSpeaking = false; }, 350);
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
 
@@ -966,6 +979,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     currentAudio.onerror = (err) => {
+      isAgentSpeaking = false;
       console.error("Audio playback error:", err);
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
@@ -983,6 +997,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await currentAudio.play();
     } catch (e) {
+      isAgentSpeaking = false;
       console.warn("Autoplay policy prevented audio:", e);
       waveContainer.classList.remove("speaking");
       avatarRing.classList.remove("call-active");
@@ -999,6 +1014,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function stopAudio() {
+    isAgentSpeaking = false;
     if (currentAudio) {
       currentAudio.pause();
       currentAudio = null;
