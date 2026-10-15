@@ -198,9 +198,24 @@ async def websocket_call_endpoint(websocket: WebSocket):
         agent = ConversationalAgent(guest=guest, lang=lang)
 
         # Generate and synthesize initial greeting or reply to recipient's Hello
+        greeting_text = agent.get_greeting()
+        rsvp_update = None
+        is_closing = False
+
         if initial_speech:
-            res = agent.respond(initial_speech)
-            greeting_text = res.get("reply", agent.get_greeting())
+            simple_pickup_words = ["hello", "halo", "helo", "हैलो", "हेलो", "haan", "ha", "boliye", "bolo", "yes", "namaste", "namaskaram"]
+            norm_speech = initial_speech.lower().strip().rstrip(".,!?")
+            if norm_speech in simple_pickup_words or len(norm_speech) < 3:
+                greeting_text = agent.get_greeting()
+            else:
+                try:
+                    res = await agent.respond(initial_speech)
+                    greeting_text = res.get("reply", agent.get_greeting())
+                    rsvp_update = res.get("rsvp_update")
+                    is_closing = res.get("is_closing", False)
+                except Exception as e:
+                    print(f"Error handling initial speech: {e}")
+                    greeting_text = agent.get_greeting()
         else:
             greeting_text = agent.get_greeting()
 
@@ -214,7 +229,9 @@ async def websocket_call_endpoint(websocket: WebSocket):
             "type": "agent_speech",
             "text": greeting_text,
             "audio_base64": audio_b64,
-            "guest": agent.guest
+            "guest": agent.guest,
+            "rsvp_update": rsvp_update,
+            "is_closing": is_closing
         })
 
         # Process conversation loop
