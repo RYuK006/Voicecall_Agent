@@ -84,6 +84,15 @@ class ConversationalAgent:
         is_closing = self.is_closing_turn(user_text, response_text)
         return response_text, rsvp_update, is_closing
 
+    async def respond(self, user_text: str) -> Dict[str, Any]:
+        """Process user utterance and return dictionary with reply, rsvp_update, and is_closing."""
+        reply, rsvp_update, is_closing = await self.generate_response(user_text)
+        return {
+            "reply": reply,
+            "rsvp_update": rsvp_update,
+            "is_closing": is_closing
+        }
+
     def is_closing_turn(self, user_text: str, agent_text: str) -> bool:
         """Automatically detect if this interaction marks the natural end of the call."""
         u = user_text.lower()
@@ -115,6 +124,10 @@ class ConversationalAgent:
     def _local_conversational_engine(self, text: str) -> str:
         """Intelligent, zero-latency local fallback engine for Hindi, Malayalam, and English."""
         t = text.lower().strip()
+
+        # 0. Check for initial Hello / Greeting from recipient
+        if any(w in t for w in ["hello", "helo", "halo", "हैलो", "हेलो", "namaste", "namaskaram"]):
+            return self.get_greeting()
 
         # 1. Check for Confirmation / Yes
         yes_keywords = [
