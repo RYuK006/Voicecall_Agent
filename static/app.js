@@ -245,6 +245,19 @@ document.addEventListener("DOMContentLoaded", () => {
         selectAudioOutput.innerHTML = `<option value="default">Default Output Speaker</option>`;
       }
 
+      // Preserve previously selected devices if still available
+      if (selectedInputDeviceId && [...selectAudioInput.options].some(o => o.value === selectedInputDeviceId)) {
+        selectAudioInput.value = selectedInputDeviceId;
+      } else {
+        selectedInputDeviceId = selectAudioInput.value;
+      }
+
+      if (selectedOutputDeviceId && [...selectAudioOutput.options].some(o => o.value === selectedOutputDeviceId)) {
+        selectAudioOutput.value = selectedOutputDeviceId;
+      } else {
+        selectedOutputDeviceId = selectAudioOutput.value;
+      }
+
       initVUMeter(selectedInputDeviceId);
     } catch (err) {
       console.warn("Could not enumerate audio devices:", err);
